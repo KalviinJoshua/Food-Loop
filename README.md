@@ -1,17 +1,28 @@
-# 🍱 Food - Smart Food Donation Platform
+# 🍱 FoodBridge - Smart Food Donation Platform
 
-A modern web application that connects food donors with receivers to reduce food waste. The platform provides an intuitive interface for donating surplus food, requesting food, and managing the complete donation process.
+A modern web application that connects food donors, NGOs, and waste processors to reduce food waste. FoodBridge enables real-time food donation, intelligent matching, and sustainable waste management through a unified digital platform.
+
+---
+
+## 🌐 Live Demo
+
+**Website:** https://YOUR-VERCEL-URL.vercel.app
+
+---
 
 ## ✨ Features
 
 - 🍽️ Food donation management
-- 🤝 Connect donors and receivers
-- 📍 Interactive map for nearby donations
-- 🤖 AI-powered food advisor
+- 🤝 Connect food donors with NGOs and receivers
+- 📍 Interactive real-time network map
+- 🤖 AI-powered food matching & advisor
 - ⭐ Rating and feedback system
-- 👤 User authentication
-- 📊 Dashboard for different user roles
+- 👤 Role-based authentication
+- 📊 Dedicated dashboards for Donors, Receivers & Waste Processors
 - 📱 Responsive user interface
+- ♻️ Sustainable food redistribution ecosystem
+
+---
 
 ## 🛠️ Tech Stack
 
@@ -25,10 +36,15 @@ A modern web application that connects food donors with receivers to reduce food
 - Node.js
 - Express
 
+### AI
+- Google Gemini API
+
+---
+
 ## 📂 Project Structure
 
-```
-food/
+```text
+FoodBridge/
 ├── src/
 │   ├── components/
 │   ├── context/
@@ -36,65 +52,74 @@ food/
 │   ├── types/
 │   ├── App.tsx
 │   └── main.tsx
+├── assets/
+│   └── screenshots/
 ├── server.js
 ├── server.ts
 ├── package.json
 └── vite.config.ts
 ```
 
-## 🚀 Getting Started
+---
 
-### 1. Clone the repository
+# 📸 Application Screenshots
 
-```bash
-git clone https://github.com/KalviinJoshua/food.git
-```
+## Login
 
-### 2. Navigate into the project
+![Login](assets/screenshots/login.png)
 
-```bash
-cd food
-```
+---
 
-### 3. Install dependencies
+## Landing Page
 
-```bash
-npm install
-```
+![Landing Page](assets/screenshots/landing-page.png)
 
-### 4. Run the development server
+---
 
-```bash
-npm run dev
-```
+## Donor Registration
 
-Open your browser and visit:
+![Registration](assets/screenshots/registration.png)
 
-```
-http://localhost:3000
-```
+---
 
-If port 3000 is already in use, Vite will automatically use another available port (for example, `3001`).
+## Interactive Network Map
 
-## 📸 Screenshots
+![Interactive Map](assets/screenshots/interactive-map.png)
 
-_Add screenshots of your application here._
+---
+
+## Receiver Dashboard
+
+![Receiver Dashboard](assets/screenshots/receiver-dashboard.png)
+
+---
+
+## Waste Processor Dashboard
+
+![Waste Processor Dashboard](assets/screenshots/waste-processor-dashboard.png)
+
+---
 
 ## 🎯 Future Improvements
 
-- Real-time donation tracking
-- Push notifications
-- AI-based food recommendation
-- Google Maps integration
-- Mobile application
-- Admin analytics dashboard
+- 🔔 Real-time notifications
+- 📱 Mobile application
+- 🛰️ Live GPS tracking
+- 🗺️ Google Maps integration
+- 📈 Admin analytics dashboard
+- 💳 Donation history & reports
+- 🔐 OAuth Authentication
+- 📦 Cloud database integration
+
+---
 
 ## 👨‍💻 Author
 
 **D. Kalviin Joshua**
 
 - GitHub: https://github.com/KalviinJoshua
+- Repository: https://github.com/KalviinJoshua/FoodBridge
 
 ---
 
-If you found this project useful, consider giving it a ⭐ on GitHub!
+⭐ If you found this project helpful, consider starring the repository.
