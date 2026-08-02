@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #31572C;
+  --color-primary-light: #4F772D;
+  --color-on-primary: #FFFFFF;
+  --color-secondary: #4F772D;
+  --color-on-secondary: #FFFFFF;
+  --color-secondary-container: #DEDECF;
+  --color-on-secondary-container: #31572C;
+  --color-surface: #F5F5F0;
+  --color-surface-bright: #FFFFFF;
+  --color-surface-container-lowest: #E9E9E0;
+  --color-surface-container-low: #DEDECF;
+  --color-surface-container: #E9E9E0;
+  --color-on-surface: #2C3333;
+  --color-on-surface-variant: #8B8B7A;
+  --color-outline: #C8C8B4;
+  --color-outline-variant: #D6D6C2;
+
+  --color-receiver-accent: #2E5A88;
+  --color-waste-accent: #6D4C41;
+
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: #F5F5F0;
+    color: #2C3333;
+    font-family: var(--font-sans);
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif);
+    color: #31572C;
+  }
+}
+
+@layer utilities {
+  .hero-gradient {
+    background: linear-gradient(135deg, #F5F5F0 0%, #E9E9E0 60%, rgba(79, 119, 45, 0.08) 100%);
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -6px rgba(44, 51, 51, 0.08);
+  }
+
+  .card-natural {
+    background-color: #FFFFFF;
+    border: 1px solid #E9E9E0;
+    border-radius: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .card-natural-sm {
+    background-color: #FFFFFF;
+    border: 1px solid #E9E9E0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+}
+

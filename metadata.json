@@ -1,0 +1,8 @@
+{
+  "name": "Remix FoodLoop",
+  "description": "Intelligent Food Recovery \u0026 Waste Management Platform connecting donors, receivers, and waste processors with smart matching algorithms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
