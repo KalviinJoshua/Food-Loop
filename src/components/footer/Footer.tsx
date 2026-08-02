@@ -77,7 +77,7 @@ export const Footer: React.FC = () => {
       </div>
       <div className="w-full pt-8 border-t border-outline-variant/30 text-center">
         <p className="font-caption text-caption text-on-surface-variant">
-          © 2024 FoodLoop. Recovering food, restoring hope.
+          © 2026 FoodLoop. Recovering food, restoring hope.
         </p>
       </div>
     </footer>
