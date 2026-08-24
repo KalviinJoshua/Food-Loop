@@ -10,9 +10,7 @@ The platform helps restaurants, hotels, supermarkets, NGOs, shelters, orphanages
 
 ## 🌐 Live Demo
 
-🚧 **Coming soon**
-
-The live Vercel deployment will be added after the project is pushed to GitHub and deployed.
+**Website:**https://foodloop-nu.vercel.app/
 
 ---
 
