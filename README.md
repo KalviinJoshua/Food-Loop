@@ -121,6 +121,5 @@ FoodBridge/
 - Repository: https://github.com/KalviinJoshua/FoodBridge
 
 ---
-⭐ If you found this project helpful, consider starring the repository.
-=======
+
 ⭐ If you found this project helpful, consider starring the repository.
