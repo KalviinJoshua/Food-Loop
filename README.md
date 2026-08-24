@@ -121,9 +121,6 @@ FoodBridge/
 - Repository: https://github.com/KalviinJoshua/FoodBridge
 
 ---
-
-<<<<<<< HEAD
 ⭐ If you found this project helpful, consider starring the repository.
 =======
 ⭐ If you found this project helpful, consider starring the repository.
->>>>>>> 1970c19 (Rename screenshots folder)
