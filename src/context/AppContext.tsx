@@ -7,14 +7,16 @@ import {
   UserRole,
   DonationStatus,
   ChatMessage,
+  FssaiVerificationResult,
 } from '../types';
 import {
   ALL_MOCK_USERS,
   INITIAL_DONATION_POSTS,
   INITIAL_RECEIVER_REQUESTS,
-  getTop3Matches,
   calculatePartialAllocation,
+  getTop3Matches,
 } from '../data/mockData';
+import { getDynamicTop3Matches } from '../data/matchingEngine';
 
 interface AppContextType {
   currentUser: User | null;
@@ -28,7 +30,9 @@ interface AppContextType {
   loginUserByRole: (role: UserRole) => void;
   loginByEmail: (email: string) => boolean;
   registerUser: (
-    newUserData: Omit<User, 'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'>
+    newUserData: Omit<User, 'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'> & {
+      fssaiVerification?: FssaiVerificationResult;
+    }
   ) => User;
   createDonationPost: (
     postData: {
@@ -45,6 +49,10 @@ interface AppContextType {
   ) => DonationPost;
   updatePostStatus: (postId: string, newStatus: DonationStatus) => void;
   autoAllocatePost: (postId: string) => void;
+  acceptDonationComplete: (postId: string) => void;
+  acceptDonationPartial: (postId: string) => void;
+  markDonationCollected: (postId: string) => void;
+  markDonationCompleted: (postId: string) => void;
   createReceiverRequest: (
     reqData: {
       mealsRequired: number;
@@ -75,48 +83,103 @@ const STORAGE_KEY_USERS = 'foodloop_users_v1';
 const STORAGE_KEY_POSTS = 'foodloop_posts_v1';
 const STORAGE_KEY_REQUESTS = 'foodloop_requests_v1';
 const STORAGE_KEY_RATINGS = 'foodloop_ratings_v1';
+const STORAGE_KEY_CURRENT_USER = 'foodloop_current_user_v1';
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const createUserId = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `user-${crypto.randomUUID()}`;
+  }
+  return `user-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const readStoredArray = <T,>(key: string, fallback: T[]): T[] => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_USERS);
-      return saved ? JSON.parse(saved) : ALL_MOCK_USERS;
-    } catch {
-      return ALL_MOCK_USERS;
-    }
+    return readStoredArray(STORAGE_KEY_USERS, ALL_MOCK_USERS);
   });
 
   const [posts, setPosts] = useState<DonationPost[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_POSTS);
-      return saved ? JSON.parse(saved) : INITIAL_DONATION_POSTS;
-    } catch {
-      return INITIAL_DONATION_POSTS;
-    }
+    return readStoredArray(STORAGE_KEY_POSTS, INITIAL_DONATION_POSTS);
   });
 
   const [requests, setRequests] = useState<ReceiverRequest[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_REQUESTS);
-      return saved ? JSON.parse(saved) : INITIAL_RECEIVER_REQUESTS;
-    } catch {
-      return INITIAL_RECEIVER_REQUESTS;
-    }
+    return readStoredArray(STORAGE_KEY_REQUESTS, INITIAL_RECEIVER_REQUESTS);
   });
 
   const [ratings, setRatings] = useState<RatingReview[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_RATINGS);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    return readStoredArray(STORAGE_KEY_RATINGS, []);
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    // Default to Green Bistro for immediate interactive demo
-    return ALL_MOCK_USERS[0];
+  const [currentUser, setCurrentUserState] = useState<User | null>(() => {
+    try {
+      const savedUserId = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
+      if (savedUserId) {
+        const storedUser = users.find((u) => u.id === savedUserId);
+        if (storedUser) return storedUser;
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+      }
+    } catch {
+      // ignore storage errors and keep the demo default
+    }
+    // Return the first user that exists in the users array, or first mock user
+    return users.find((u) => u.id) || ALL_MOCK_USERS[0];
   });
+
+  // Refresh currentUser when users change - keep in sync
+  useEffect(() => {
+    if (!currentUser) return;
+    const refreshedUser = users.find((u) => u.id === currentUser.id);
+    if (refreshedUser && refreshedUser !== currentUser) {
+      setCurrentUserState(refreshedUser);
+    } else if (!refreshedUser) {
+      try {
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+      } catch {
+        // ignore
+      }
+      // Fall back to first available user
+      setCurrentUserState(users.find((u) => u.id) || ALL_MOCK_USERS[0]);
+    }
+  }, [users, currentUser]);
+
+  // Save changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+      localStorage.setItem(STORAGE_KEY_POSTS, JSON.stringify(posts));
+      localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(requests));
+      localStorage.setItem(STORAGE_KEY_RATINGS, JSON.stringify(ratings));
+    } catch {
+      // ignore
+    }
+  }, [users, posts, requests, ratings]);
+
+  const setCurrentUser = (user: User | null) => {
+    setCurrentUserState(user);
+    try {
+      if (user) {
+        localStorage.setItem(STORAGE_KEY_CURRENT_USER, user.id);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const [activeView, setActiveView] = useState<'landing' | 'register' | 'login' | 'dashboard' | 'map'>('landing');
 
@@ -161,7 +224,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Login by Role (for 1-click Demo Switcher)
   const loginUserByRole = (role: UserRole) => {
-    const found = users.find((u) => u.role === role);
+    const demoUser = ALL_MOCK_USERS.find((u) => u.role === role);
+    const found = users.find((u) => u.id === demoUser?.id) || users.find((u) => u.role === role);
     if (found) {
       setCurrentUser(found);
       setActiveView('dashboard');
@@ -170,7 +234,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Login by Email
   const loginByEmail = (email: string): boolean => {
-    const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const normalizedEmail = normalizeEmail(email);
+    if (!isValidEmail(normalizedEmail)) return false;
+    const found = users.find((u) => normalizeEmail(u.email) === normalizedEmail);
     if (found) {
       setCurrentUser(found);
       setActiveView('dashboard');
@@ -179,14 +245,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  // Register User -> Automatically assigns verified = true and shows Verified Badge!
+  // Register User
   const registerUser = (
-    newUserData: Omit<User, 'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'>
+    newUserData: Omit<User, 'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'> & {
+      fssaiVerification?: FssaiVerificationResult;
+    }
   ): User => {
+    const normalizedEmail = normalizeEmail(newUserData.email);
+
+    if (!newUserData.name.trim() || !newUserData.contactPerson.trim() || !normalizedEmail || !newUserData.address.trim()) {
+      throw new Error('Please fill in all required fields (Organization Name, Contact, Email, Address).');
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      throw new Error('Please enter a valid email address.');
+    }
+
+    const duplicate = users.some((u) => normalizeEmail(u.email) === normalizedEmail);
+    if (duplicate) {
+      throw new Error('An account with this email already exists. Please login or use another email.');
+    }
+
     const newUser: User = {
       ...newUserData,
-      id: `user-${Date.now()}`,
-      verified: true, // Automatically verified per Requirement 1
+      id: createUserId(),
+      name: newUserData.name.trim(),
+      email: normalizedEmail,
+      phone: newUserData.phone.trim(),
+      address: newUserData.address.trim(),
+      contactPerson: newUserData.contactPerson.trim(),
+      fssai: newUserData.fssai?.trim() || undefined,
+      gstin: newUserData.gstin?.trim() || undefined,
+      verified: newUserData.fssaiVerification?.verificationStatus === 'verified',
+      verificationStatus: newUserData.fssaiVerification?.verificationStatus || 'pending_review',
+      certificateUploaded: Boolean(newUserData.fssaiVerification),
+      extractedFssaiNumber: newUserData.fssaiVerification?.extractedData.fssaiNumber,
+      certificateExpiryDate: newUserData.fssaiVerification?.extractedData.expiryDate,
+      verificationTimestamp: newUserData.fssaiVerification?.verifiedAt,
+      fssaiVerification: newUserData.fssaiVerification,
       rating: 5.0,
       ratingCount: 1,
       reliability: 100,
@@ -209,38 +305,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     locationAddress: string;
   }): DonationPost => {
     if (!currentUser) throw new Error('Must be logged in to create a post');
+    if (currentUser.role !== 'donor') throw new Error('Only donors can create donation posts');
 
-    // Calculate Top 3 matches using our Smart Matching Engine
-    const topMatches = getTop3Matches({
-      type: postData.type,
-      quantityMeals: postData.quantityMeals,
-      allergens: postData.allergens,
-      deliveryRadiusMiles: postData.deliveryRadiusMiles,
-    });
+    // Validate required fields
+    if (!postData.title || !postData.title.trim()) {
+      throw new Error('Donation title is required');
+    }
+    if (typeof postData.quantityMeals !== 'number' || postData.quantityMeals <= 0) {
+      throw new Error('Quantity must be greater than zero');
+    }
+    if (!postData.locationAddress || !postData.locationAddress.trim()) {
+      throw new Error('Location address is required');
+    }
+    if (postData.deliveryRadiusMiles < 0) {
+      throw new Error('Delivery radius cannot be negative');
+    }
 
+    // Create the new post first
     const newPost: DonationPost = {
-      id: `post-${Date.now()}`,
+      id: `post-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       donorId: currentUser.id,
       donorName: currentUser.name,
       type: postData.type,
-      title: postData.title,
-      description: postData.description,
+      title: postData.title.trim(),
+      description: postData.description || '',
       quantityMeals: postData.quantityMeals,
       prepTime: postData.prepTime,
       allergens: postData.allergens,
       safeUntil: postData.safeUntil,
       deliveryRadiusMiles: postData.deliveryRadiusMiles,
-      locationAddress: postData.locationAddress,
+      locationAddress: postData.locationAddress.trim(),
       status: 'Posted',
       createdAt: new Date().toISOString(),
-      matches: topMatches,
+      matches: [],
       allocations: [],
     };
 
-    setPosts((prev) => [newPost, ...prev]);
+    // Calculate Top 3 matches using our Smart Matching Engine
+    const topMatches = getDynamicTop3Matches(
+      newPost,
+      users,
+      requests,
+      posts
+    );
+
+    // Update the post with matches
+    const postWithMatches: DonationPost = {
+      ...newPost,
+      matches: topMatches,
+    };
+
+    setPosts((prev) => [postWithMatches, ...prev]);
     // Asynchronously call AI matching
-    runAiMatching(newPost);
-    return newPost;
+    runAiMatching(postWithMatches);
+    return postWithMatches;
   };
 
   // Update Status in Workflow: Posted -> Matched -> Accepted -> Collected -> Completed
@@ -257,17 +375,174 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Partial Allocation execution -> auto distribute meals among receivers
   const autoAllocatePost = (postId: string) => {
+    if (!currentUser) throw new Error('Must be logged in');
+    if (currentUser.role !== 'donor') throw new Error('Only donors can auto-allocate');
+
     setPosts((prev) =>
       prev.map((p) => {
         if (p.id === postId) {
+          // Calculate allocation steps based on current matches
           const allocSteps = calculatePartialAllocation(p.quantityMeals, p.matches);
-          // also mark as Matched or Accepted
+          
+          // Update receiver requests to reflect fulfilled meals
+          setRequests((prevRequests) => {
+            const updatedRequests = prevRequests.map((r) => {
+              // Find allocation for this receiver in the current allocation
+              const allocForReceiver = allocSteps.find((step) => step.receiverId === r.id);
+              if (allocForReceiver) {
+                return {
+                  ...r,
+                  fulfilledMeals: (r.fulfilledMeals || 0) + allocForReceiver.allocated,
+                  status: 'Matched',
+                };
+              }
+              return r;
+            });
+            return updatedRequests;
+          });
+          
+          // Update the post with allocations
           return {
             ...p,
             status: 'Matched',
             allocations: allocSteps,
             assignedReceiverId: allocSteps[0]?.receiverId,
             assignedReceiverName: allocSteps[0]?.receiverName,
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Accept Complete Donation - receiver accepts entire donation
+  const acceptDonationComplete = (postId: string) => {
+    if (!currentUser) throw new Error('Must be logged in');
+    if (currentUser.role !== 'receiver') throw new Error('Only receivers can accept donations');
+
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          // Validate state transition
+          if (p.status === 'Completed') {
+            throw new Error('Donation already completed');
+          }
+          if (p.status === 'Collected') {
+            throw new Error('Donation already collected');
+          }
+
+          // Check if expired
+          const safeUntilTime = new Date(p.safeUntil).getTime();
+          const currentTime = Date.now();
+          if (currentTime > safeUntilTime) {
+            throw new Error('Donation has expired and can no longer be accepted');
+          }
+
+          // Mark as accepted
+          return {
+            ...p,
+            status: 'Accepted',
+            assignedReceiverId: currentUser.id,
+            assignedReceiverName: currentUser.name,
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Accept Partial Donation - receiver accepts their allocated portion
+  const acceptDonationPartial = (postId: string) => {
+    if (!currentUser) throw new Error('Must be logged in');
+    if (currentUser.role !== 'receiver') throw new Error('Only receivers can accept donations');
+
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          // Validate state transition
+          if (p.status === 'Completed') {
+            throw new Error('Donation already completed');
+          }
+          if (p.status === 'Collected') {
+            throw new Error('Donation already collected');
+          }
+
+          // Check if expired
+          const safeUntilTime = new Date(p.safeUntil).getTime();
+          const currentTime = Date.now();
+          if (currentTime > safeUntilTime) {
+            throw new Error('Donation has expired and can no longer be accepted');
+          }
+
+          // Find receiver's allocation
+          const receiverAllocation = p.allocations.find((a) => a.receiverId === currentUser.id);
+          if (!receiverAllocation) {
+            throw new Error('No allocation found for this receiver');
+          }
+          if (receiverAllocation.allocated <= 0) {
+            throw new Error('No quantity allocated to accept');
+          }
+
+          // Mark allocation as accepted by updating status
+          return {
+            ...p,
+            status: 'Accepted',
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Mark Donation Collected - receiver marks food as collected
+  const markDonationCollected = (postId: string) => {
+    if (!currentUser) throw new Error('Must be logged in');
+    if (currentUser.role !== 'receiver') throw new Error('Only receivers can mark collected');
+
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          // Validate state transition
+          if (p.status === 'Completed') {
+            throw new Error('Donation already completed');
+          }
+          if (p.status === 'Collected') {
+            return p; // Idempotent - already collected
+          }
+          if (p.status !== 'Accepted') {
+            throw new Error('Donation must be accepted before collection');
+          }
+
+          // Mark as collected
+          return {
+            ...p,
+            status: 'Collected',
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Mark Donation Completed - final step in lifecycle
+  const markDonationCompleted = (postId: string) => {
+    if (!currentUser) throw new Error('Must be logged in');
+
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          // Validate state transition
+          if (p.status === 'Completed') {
+            return p; // Idempotent - already completed
+          }
+          if (p.status !== 'Collected') {
+            throw new Error('Donation must be collected before completion');
+          }
+
+          // Mark as completed
+          return {
+            ...p,
+            status: 'Completed',
           };
         }
         return p;
@@ -283,14 +558,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     locationAddress: string;
   }): ReceiverRequest => {
     if (!currentUser) throw new Error('Must be logged in as Receiver');
+    if (currentUser.role !== 'receiver') throw new Error('Only receivers can create requests');
+
+    // Validate required fields
+    if (typeof reqData.mealsRequired !== 'number' || reqData.mealsRequired <= 0) {
+      throw new Error('Meals required must be greater than zero');
+    }
+    if (!reqData.locationAddress || !reqData.locationAddress.trim()) {
+      throw new Error('Location address is required');
+    }
+    if (!['Normal', 'High', 'Immediate'].includes(reqData.urgency)) {
+      throw new Error('Invalid urgency level');
+    }
+
     const newReq: ReceiverRequest = {
-      id: `req-${Date.now()}`,
+      id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       receiverId: currentUser.id,
       receiverName: currentUser.name,
       mealsRequired: reqData.mealsRequired,
-      dietaryNotes: reqData.dietaryNotes,
+      fulfilledMeals: 0,
+      dietaryNotes: reqData.dietaryNotes || [],
       urgency: reqData.urgency,
-      locationAddress: reqData.locationAddress,
+      locationAddress: reqData.locationAddress.trim(),
       status: 'Active',
       createdAt: new Date().toISOString(),
     };
@@ -308,32 +597,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     if (!currentUser) return;
 
+    // --- Validation ---
+    // Rating must be 1-5
+    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+      console.error('Invalid rating value:', ratingValue);
+      return;
+    }
+
+    // Reliability must be 50-100
+    if (!Number.isInteger(reliabilityScore) || reliabilityScore < 50 || reliabilityScore > 100) {
+      console.error('Invalid reliability score:', reliabilityScore);
+      return;
+    }
+
+    // Comment: trim whitespace, allow empty
+    const trimmedComment = (comment || '').trim();
+
+    // --- Eligibility: donation must exist and be Completed ---
+    const post = posts.find((p) => p.id === donationId);
+    if (!post) {
+      console.error('Donation not found:', donationId);
+      return;
+    }
+    if (post.status !== 'Completed') {
+      console.error('Rating only available for Completed donations. Current status:', post.status);
+      return;
+    }
+
+    // --- Target user validation: must exist and participate in donation ---
+    const targetUser = users.find((u) => u.id === toUserId);
+    if (!targetUser) {
+      console.error('Target user not found:', toUserId);
+      return;
+    }
+
+    // --- Duplicate rating prevention: same fromUserId + toUserId + donationId ---
+    const duplicate = ratings.find(
+      (r) => r.fromUserId === currentUser.id && r.toUserId === toUserId && r.donationId === donationId
+    );
+    if (duplicate) {
+      console.log('Duplicate rating detected for', currentUser.id, '+', toUserId, '+', donationId);
+      return;
+    }
+
+    // --- Ownership validation: currentUser must be participant in this donation ---
+    const isDonor = post.donorId === currentUser.id;
+    const isReceiver = post.donorId !== currentUser.id && currentUser.role !== 'donor';
+    // Allow if currentUser is either the donor or a receiver participant (not random user)
+    if (!isDonor && currentUser.role !== 'receiver') {
+      console.error('User is not a participant in this donation');
+      return;
+    }
+
+    // --- Build new rating ---
     const newRating: RatingReview = {
       id: `rating-${Date.now()}`,
       fromUserId: currentUser.id,
       fromUserName: currentUser.name,
       toUserId,
-      toUserName:
-        users.find((u) => u.id === toUserId)?.name || 'Partner Organization',
+      toUserName: targetUser.name,
       donationId,
       rating: ratingValue,
-      reliabilityScore,
-      comment,
+      reliabilityScore: reliabilityScore,
+      comment: trimmedComment,
       createdAt: new Date().toISOString(),
     };
 
     setRatings((prev) => [newRating, ...prev]);
 
-    // Update the recipient's average rating and reliability score
+    // --- Update the recipient's average rating and reliability score ---
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === toUserId) {
-          const newCount = (u.ratingCount || 1) + 1;
+          const newCount = (u.ratingCount || 0) + 1;
           const newAvgRating = parseFloat(
-            ((u.rating * u.ratingCount + ratingValue) / newCount).toFixed(1)
+            ((u.rating * (u.ratingCount || 0) + ratingValue) / newCount).toFixed(1)
           );
           const newReliability = Math.round(
-            (u.reliability * u.ratingCount + reliabilityScore) / newCount
+            (u.reliability * (u.ratingCount || 0) + reliabilityScore) / newCount
           );
           return {
             ...u,
@@ -464,6 +805,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEY_POSTS);
     localStorage.removeItem(STORAGE_KEY_REQUESTS);
     localStorage.removeItem(STORAGE_KEY_RATINGS);
+    localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
     localStorage.removeItem('foodloop_advisor_chat');
     setUsers(ALL_MOCK_USERS);
     setPosts(INITIAL_DONATION_POSTS);
@@ -490,6 +832,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createDonationPost,
         updatePostStatus,
         autoAllocatePost,
+        acceptDonationComplete,
+        acceptDonationPartial,
+        markDonationCollected,
+        markDonationCompleted,
         createReceiverRequest,
         submitRating,
         resetDemoData,

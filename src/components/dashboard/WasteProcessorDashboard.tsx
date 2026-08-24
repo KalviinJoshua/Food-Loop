@@ -402,6 +402,32 @@ export const WasteProcessorDashboard: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Organization</span>
+                  <strong className="text-primary">{currentUser?.name}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Contact Person</span>
+                  <strong className="text-primary">{currentUser?.contactPerson || 'Facility Manager'}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Email</span>
+                  <strong className="text-primary">{currentUser?.email}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Phone</span>
+                  <strong className="text-primary">{currentUser?.phone}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Facility Type</span>
+                  <strong className="text-primary">{currentUser?.facilityType || 'Compost Facility'}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Facility Capacity</span>
+                  <strong className="text-primary">{currentUser?.capacityTons || 0} Tons</strong>
+                </div>
+              </div>
             </div>
           )}
         </div>

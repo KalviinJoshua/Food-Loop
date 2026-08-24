@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { UserRole } from '../../types';
+import { FssaiVerificationResult, UserRole } from '../../types';
+
+const MAX_CERTIFICATE_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_CERTIFICATE_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+const ALLOWED_CERTIFICATE_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
 
 export const RegisterPage: React.FC = () => {
-  const { registerUser, setActiveView } = useApp();
+  const { currentUser, registerUser, setActiveView } = useApp();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedRole, setSelectedRole] = useState<UserRole>('donor');
 
@@ -19,6 +23,9 @@ export const RegisterPage: React.FC = () => {
   const [facilityType, setFacilityType] = useState('Compost Facility');
   const [errorMsg, setErrorMsg] = useState('');
   const [registeredName, setRegisteredName] = useState('Green Leaf Bistro');
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const certificateInputRef = useRef<HTMLInputElement>(null);
 
   const handleSelectRole = (role: UserRole) => {
     setSelectedRole(role);
@@ -27,8 +34,74 @@ export const RegisterPage: React.FC = () => {
     }, 250);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateCertificateFile = (file: File): string | null => {
+    const lowerName = file.name.toLowerCase();
+    const hasValidExtension = ALLOWED_CERTIFICATE_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+    // Accept if MIME type is valid OR extension is valid (allow for browser MIME type variations)
+    if (!ALLOWED_CERTIFICATE_TYPES.has(file.type) && !hasValidExtension) {
+      return 'Please upload a valid PDF, JPG, JPEG, or PNG certificate.';
+    }
+    if (file.size <= 0) {
+      return 'The selected certificate file is empty.';
+    }
+    if (file.size > MAX_CERTIFICATE_SIZE_BYTES) {
+      return 'Certificate file is too large. Maximum file size is 10MB.';
+    }
+    return null;
+  };
+
+  const handleCertificateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg('');
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setCertificateFile(null);
+      return;
+    }
+
+    const validationError = validateCertificateFile(file);
+    if (validationError) {
+      setCertificateFile(null);
+      setErrorMsg(validationError);
+      return;
+    }
+
+    setCertificateFile(file);
+  };
+
+  const verifyCertificate = async (): Promise<FssaiVerificationResult> => {
+    if (!certificateFile) {
+      throw new Error('Please upload a FSSAI certificate for donor verification.');
+    }
+
+    const validationError = validateCertificateFile(certificateFile);
+    if (validationError) throw new Error(validationError);
+
+    const formData = new FormData();
+    formData.append('certificate', certificateFile);
+    formData.append('organizationName', orgName.trim());
+    formData.append('fssaiNumber', fssai.trim());
+
+    const response = await fetch('/api/verify-fssai', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => null) as FssaiVerificationResult | { error?: string } | null;
+
+    if (!response.ok) {
+      throw new Error(data && 'error' in data && data.error ? data.error : 'FSSAI verification failed.');
+    }
+
+    if (!data || !('verificationStatus' in data)) {
+      throw new Error('FSSAI verification returned an invalid response.');
+    }
+
+    return data;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorMsg('');
 
     // Validation
@@ -37,26 +110,38 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    setRegisteredName(orgName);
+    if (selectedRole === 'donor' && !fssai.trim()) {
+      setErrorMsg('Please enter your FSSAI number for donor registration.');
+      return;
+    }
 
-    // Register user -> auto assigns verified = true per Requirement 1
-    registerUser({
-      name: orgName,
-      role: selectedRole,
-      email,
-      phone: phone || '+1 (212) 555-0199',
-      address,
-      contactPerson,
-      fssai: fssai || '11523004000000',
-      gstin: gstin || '07AABCU9603R1Z0',
-      location: { lat: 40.73, lng: -73.99, addressText: address || 'New York, NY' },
-      mealsRequired: selectedRole === 'receiver' ? mealsRequired : undefined,
-      facilityType: selectedRole === 'waste_processor' ? facilityType : undefined,
-      canCollect: selectedRole === 'receiver' ? 'Daily Pickup' : undefined,
-      capacityTons: selectedRole === 'waste_processor' ? 150 : undefined,
-    });
+    setIsSubmitting(true);
 
-    setStep(3);
+    try {
+      const fssaiVerification = selectedRole === 'donor' ? await verifyCertificate() : undefined;
+      registerUser({
+        name: orgName,
+        role: selectedRole,
+        email,
+        phone: phone || '+91',
+        address,
+        contactPerson,
+        fssai: selectedRole === 'donor' ? fssai : undefined,
+        gstin: selectedRole === 'donor' ? gstin : undefined,
+        location: { lat: 40.73, lng: -73.99, addressText: address || 'New York, NY' },
+        mealsRequired: selectedRole === 'receiver' ? mealsRequired : undefined,
+        facilityType: selectedRole === 'waste_processor' ? facilityType : undefined,
+        canCollect: selectedRole === 'receiver' ? 'Daily Pickup' : undefined,
+        capacityTons: selectedRole === 'waste_processor' ? 150 : undefined,
+        fssaiVerification,
+      });
+      setRegisteredName(orgName);
+      setStep(3);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoToDashboard = () => {
@@ -267,7 +352,7 @@ export const RegisterPage: React.FC = () => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="rounded-lg border-outline-variant focus:border-secondary focus:ring-secondary p-3 bg-surface-bright"
-                    placeholder="+1 (212) 000-0000"
+                    placeholder="+91"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -364,7 +449,10 @@ export const RegisterPage: React.FC = () => {
                 <label className="font-label-md text-label-md text-on-surface-variant">
                   Government Certificate (PDF/JPG) — Automated Verification Enabled
                 </label>
-                <div className="border-2 border-dashed border-outline-variant rounded-xl p-8 text-center bg-surface-bright hover:border-secondary transition-colors cursor-pointer group">
+                <div
+                  onClick={() => certificateInputRef.current?.click()}
+                  className="border-2 border-dashed border-outline-variant rounded-xl p-8 text-center bg-surface-bright hover:border-secondary transition-colors cursor-pointer group"
+                >
                   <span className="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-secondary mb-2">
                     upload_file
                   </span>
@@ -372,16 +460,23 @@ export const RegisterPage: React.FC = () => {
                   <p className="font-caption text-caption text-outline">
                     Maximum file size 5MB • Instant automatic verification
                   </p>
-                  <input type="file" className="hidden" />
+                  <input
+                    ref={certificateInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    onChange={handleCertificateChange}
+                  />
                 </div>
               </div>
 
               <div className="pt-6 flex justify-end">
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="bg-primary text-on-primary font-label-md text-label-md px-10 py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md"
                 >
-                  Complete Registration
+                  {isSubmitting ? 'Complete Registration' : 'Complete Registration'}
                 </button>
               </div>
             </form>
@@ -406,17 +501,17 @@ export const RegisterPage: React.FC = () => {
                   verified
                 </span>
                 <span className="font-label-md text-[10px] uppercase tracking-tighter text-secondary font-bold">
-                  Verified = True
+                  {currentUser?.verified ? 'Verified = True' : 'Verification Pending'}
                 </span>
               </div>
             </div>
 
             <h2 className="font-headline-lg text-headline-lg text-primary mb-2">
-              Application Received &amp; Verified!
+              {currentUser?.verified ? 'Application Received & Verified!' : 'Application Received!'}
             </h2>
             <p className="font-body-lg text-body-lg text-on-surface-variant mb-8">
               Thank you, <span className="font-bold text-primary">{registeredName}</span>. Your account is
-              instantly verified and ready. Welcome to FoodLoop!
+              {currentUser?.verified ? ' verified and ready' : ' ready with verification pending'}. Welcome to FoodLoop!
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

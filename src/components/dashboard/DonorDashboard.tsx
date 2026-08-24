@@ -28,9 +28,10 @@ export const DonorDashboard: React.FC = () => {
   const [locationAddress, setLocationAddress] = useState(
     currentUser?.address || '142 Green St, Downtown, NY'
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Active highlighted post for Smart Matching / Partial Allocation display
-  const [selectedPostId, setSelectedPostId] = useState<string>(posts[0]?.id || '');
+  const [selectedPostId, setSelectedPostId] = useState<string>('');
 
   // Rating Modal state
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
@@ -41,28 +42,49 @@ export const DonorDashboard: React.FC = () => {
     donationTitle: string;
   } | null>(null);
 
+  // Filter to show only current donor's posts
+  const myPosts = posts.filter((p) => p.donorId === currentUser?.id);
+  
+  // Set initial selected post when myPosts changes
+  React.useEffect(() => {
+    if (myPosts.length > 0 && !selectedPostId) {
+      setSelectedPostId(myPosts[0].id);
+    } else if (myPosts.length === 0) {
+      setSelectedPostId('');
+    }
+  }, [myPosts, selectedPostId]);
+
   const selectedPost: DonationPost | undefined = posts.find((p) => p.id === selectedPostId) || posts[0];
 
   const handleCreatePost = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !quantityMeals) return;
+    if (isSubmitting) return;
+    
+    try {
+      if (!title.trim() || !quantityMeals) return;
 
-    const created = createDonationPost({
-      type: postType,
-      title,
-      description,
-      quantityMeals: Number(quantityMeals),
-      prepTime,
-      allergens: allergens.split(',').map((s) => s.trim()),
-      safeUntil,
-      deliveryRadiusMiles: Number(deliveryRadiusMiles),
-      locationAddress,
-    });
+      setIsSubmitting(true);
+      const created = createDonationPost({
+        type: postType,
+        title,
+        description,
+        quantityMeals: Number(quantityMeals),
+        prepTime,
+        allergens: allergens.split(',').map((s) => s.trim()),
+        safeUntil,
+        deliveryRadiusMiles: Number(deliveryRadiusMiles),
+        locationAddress,
+      });
 
-    setTitle('');
-    setDescription('');
-    setSelectedPostId(created.id);
-    setActiveTab('dashboard');
+      setTitle('');
+      setDescription('');
+      setSelectedPostId(created.id);
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error('Failed to create post:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleStatusStep = (post: DonationPost, nextStatus: DonationStatus) => {
@@ -78,7 +100,6 @@ export const DonorDashboard: React.FC = () => {
     }
   };
 
-  const myPosts = posts.filter((p) => p.donorId === currentUser?.id || true);
   const activeDonationsCount = myPosts.filter((p) => p.status !== 'Completed').length;
   const completedDonationsCount = myPosts.filter((p) => p.status === 'Completed').length;
   const totalMealsShared = myPosts.reduce((acc, p) => acc + p.quantityMeals, 0);

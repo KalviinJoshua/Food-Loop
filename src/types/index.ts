@@ -4,6 +4,33 @@ export type PostType = 'food' | 'organic_waste';
 
 export type DonationStatus = 'Posted' | 'Matched' | 'Accepted' | 'Collected' | 'Completed';
 
+export type FssaiVerificationStatus = 'verified' | 'pending_review' | 'invalid' | 'expired' | 'document_unreadable';
+
+export interface FssaiExtractedData {
+  fssaiNumber?: string;
+  organizationName?: string;
+  address?: string;
+  licenseType?: string;
+  issueDate?: string;
+  expiryDate?: string;
+}
+
+export interface FssaiVerificationChecks {
+  fssaiNumberMatch: boolean;
+  organizationNameMatch: boolean;
+  documentReadable: boolean;
+  certificateValid: boolean;
+}
+
+export interface FssaiVerificationResult {
+  success: boolean;
+  verificationStatus: FssaiVerificationStatus;
+  extractedData: FssaiExtractedData;
+  checks: FssaiVerificationChecks;
+  message?: string;
+  verifiedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -15,6 +42,12 @@ export interface User {
   fssai?: string;
   gstin?: string;
   verified: boolean;
+  verificationStatus?: FssaiVerificationStatus;
+  certificateUploaded?: boolean;
+  extractedFssaiNumber?: string;
+  certificateExpiryDate?: string;
+  verificationTimestamp?: string;
+  fssaiVerification?: FssaiVerificationResult;
   rating: number; // 1-5
   ratingCount: number;
   reliability: number; // 0-100%
@@ -92,6 +125,7 @@ export interface ReceiverRequest {
   receiverId: string;
   receiverName: string;
   mealsRequired: number;
+  fulfilledMeals?: number;
   dietaryNotes: string[];
   urgency: 'Normal' | 'High' | 'Immediate';
   locationAddress: string;

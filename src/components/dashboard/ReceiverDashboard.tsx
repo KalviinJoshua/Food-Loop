@@ -22,6 +22,7 @@ export const ReceiverDashboard: React.FC = () => {
   const [locationAddress, setLocationAddress] = useState(
     currentUser?.address || '45 E 1st St, East Village, NY'
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Rating Modal state
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
@@ -35,19 +36,31 @@ export const ReceiverDashboard: React.FC = () => {
   const activeFoodPosts = posts.filter(
     (p) => p.type === 'food' && p.status !== 'Completed'
   );
-  const myRequests = requests.filter((r) => r.receiverId === currentUser?.id || true);
+  // Filter to show only current receiver's requests
+  const myRequests = requests.filter((r) => r.receiverId === currentUser?.id);
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mealsRequired) return;
-    createReceiverRequest({
-      mealsRequired: Number(mealsRequired),
-      dietaryNotes: dietaryNotes.split(',').map((s) => s.trim()),
-      urgency,
-      locationAddress,
-    });
-    setMealsRequired(100);
-    setActiveTab('my_requests');
+    if (isSubmitting) return;
+    
+    try {
+      if (!mealsRequired || mealsRequired <= 0) return;
+      
+      setIsSubmitting(true);
+      createReceiverRequest({
+        mealsRequired: Number(mealsRequired),
+        dietaryNotes: dietaryNotes.split(',').map((s) => s.trim()),
+        urgency,
+        locationAddress,
+      });
+      setMealsRequired(100);
+      setDietaryNotes('Vegan-Friendly, No Nuts');
+      setUrgency('High');
+    } catch (error) {
+      console.error('Failed to create request:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleStatusStep = (post: DonationPost, nextStatus: DonationStatus) => {
@@ -586,6 +599,32 @@ export const ReceiverDashboard: React.FC = () => {
                     Government tax-exempt certificate verified. Ready for immediate daily rescue
                     pickups.
                   </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Organization</span>
+                  <strong className="text-primary">{currentUser?.name}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Contact Person</span>
+                  <strong className="text-primary">{currentUser?.contactPerson || 'Community Coordinator'}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Email</span>
+                  <strong className="text-primary">{currentUser?.email}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Phone</span>
+                  <strong className="text-primary">{currentUser?.phone}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Daily Meals Required</span>
+                  <strong className="text-primary">{currentUser?.mealsRequired || 0}</strong>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-bright border border-outline-variant">
+                  <span className="text-xs text-on-surface-variant block">Reliability Score</span>
+                  <strong className="text-emerald-700">{currentUser?.reliability || 100}%</strong>
                 </div>
               </div>
             </div>

@@ -37,7 +37,7 @@ export const Footer: React.FC = () => {
           <ul className="space-y-4">
             <li>
               <a
-                href="#about"
+                href= "/about.html"
                 className="font-body-md text-body-md text-on-surface-variant hover:text-secondary underline transition-all"
               >
                 About Us
@@ -45,7 +45,7 @@ export const Footer: React.FC = () => {
             </li>
             <li>
               <a
-                href="#careers"
+                href="careers.html"
                 className="font-body-md text-body-md text-on-surface-variant hover:text-secondary underline transition-all"
               >
                 Careers
