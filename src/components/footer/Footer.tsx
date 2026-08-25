@@ -6,7 +6,7 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl w-full grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
         <div className="col-span-1 md:col-span-2">
           <span className="font-headline-md text-headline-md font-bold text-primary mb-4 block">
-            FoodLoop
+            FoodBridge
           </span>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-xs mb-6">
             Building a zero-waste future through intelligent logistics and community partnership.
@@ -77,7 +77,7 @@ export const Footer: React.FC = () => {
       </div>
       <div className="w-full pt-8 border-t border-outline-variant/30 text-center">
         <p className="font-caption text-caption text-on-surface-variant">
-          © 2026 FoodLoop. Recovering food, restoring hope.
+          © 2026 FoodBridge. Recovering food, restoring hope.
         </p>
       </div>
     </footer>

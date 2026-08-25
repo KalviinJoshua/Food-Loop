@@ -47,7 +47,7 @@ interface FssaiVerificationResult {
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
-const uploadDir = path.join(os.tmpdir(), 'foodloop-fssai-uploads');
+const uploadDir = path.join(os.tmpdir(), 'FoodBridge-fssai-uploads');
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -275,7 +275,7 @@ app.post('/api/ai-matching', async (req, res) => {
 
   try {
     const prompt = `
-You are the Smart Match Engine for Remix FoodLoop, an intelligent food recovery platform.
+You are the Smart Match Engine for Remix FoodBridge, an intelligent food recovery platform.
 Given the following food donation/waste post:
 ${JSON.stringify(postDetails, null, 2)}
 
@@ -372,8 +372,8 @@ app.post('/api/ai-chat', async (req, res) => {
     }));
 
     const systemInstruction = `
-You are the FoodLoop AI Recovery Advisor, a smart copilot for food donors, receivers, and waste processors.
-The current user is ${userName || 'a FoodLoop member'} acting as a ${userRole || 'participant'}.
+You are the FoodBridge AI Recovery Advisor, a smart copilot for food donors, receivers, and waste processors.
+The current user is ${userName || 'a FoodBridge member'} acting as a ${userRole || 'participant'}.
 Help them optimize food rescue, waste prevention, logistics, composting, compliance, and explain match scores.
 Maintain a helpful, encouraging, and professional tone. Keep responses clear and formatted in markdown.
 `;

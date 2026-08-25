@@ -79,11 +79,11 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY_USERS = 'foodloop_users_v1';
-const STORAGE_KEY_POSTS = 'foodloop_posts_v1';
-const STORAGE_KEY_REQUESTS = 'foodloop_requests_v1';
-const STORAGE_KEY_RATINGS = 'foodloop_ratings_v1';
-const STORAGE_KEY_CURRENT_USER = 'foodloop_current_user_v1';
+const STORAGE_KEY_USERS = 'FoodBridge_users_v1';
+const STORAGE_KEY_POSTS = 'FoodBridge_posts_v1';
+const STORAGE_KEY_REQUESTS = 'FoodBridge_requests_v1';
+const STORAGE_KEY_RATINGS = 'FoodBridge_ratings_v1';
+const STORAGE_KEY_CURRENT_USER = 'FoodBridge_current_user_v1';
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -186,12 +186,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [aiMatchingLoading, setAiMatchingLoading] = useState(false);
   const [advisorMessages, setAdvisorMessages] = useState<ChatMessage[]>(() => {
     try {
-      const saved = localStorage.getItem('foodloop_advisor_chat');
+      const saved = localStorage.getItem('FoodBridge_advisor_chat');
       return saved ? JSON.parse(saved) : [
         {
           id: 'welcome',
           role: 'assistant',
-          content: 'Hello! I am your FoodLoop AI Recovery Advisor. How can I help you optimize food rescue, safety, or logistics today?',
+          content: 'Hello! I am your FoodBridge AI Recovery Advisor. How can I help you optimize food rescue, safety, or logistics today?',
           createdAt: new Date().toISOString()
         }
       ];
@@ -204,7 +204,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Save advisor chat to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('foodloop_advisor_chat', JSON.stringify(advisorMessages));
+      localStorage.setItem('FoodBridge_advisor_chat', JSON.stringify(advisorMessages));
     } catch {
       // ignore
     }
@@ -793,7 +793,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: 'welcome',
         role: 'assistant',
-        content: 'Hello! I am your FoodLoop AI Recovery Advisor. How can I help you optimize food rescue, safety, or logistics today?',
+        content: 'Hello! I am your FoodBridge AI Recovery Advisor. How can I help you optimize food rescue, safety, or logistics today?',
         createdAt: new Date().toISOString()
       }
     ]);
@@ -806,7 +806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEY_REQUESTS);
     localStorage.removeItem(STORAGE_KEY_RATINGS);
     localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
-    localStorage.removeItem('foodloop_advisor_chat');
+    localStorage.removeItem('FoodBridge_advisor_chat');
     setUsers(ALL_MOCK_USERS);
     setPosts(INITIAL_DONATION_POSTS);
     setRequests(INITIAL_RECEIVER_REQUESTS);

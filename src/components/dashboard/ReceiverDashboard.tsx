@@ -90,7 +90,7 @@ export const ReceiverDashboard: React.FC = () => {
             </div>
             <div>
               <span className="font-headline-md text-headline-md font-bold text-primary block leading-none">
-                FoodLoop
+                FoodBridge
               </span>
               <span className="text-[10px] uppercase tracking-wider text-secondary font-bold block mt-0.5">
                 Receiver Portal

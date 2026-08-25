@@ -511,7 +511,7 @@ export const RegisterPage: React.FC = () => {
             </h2>
             <p className="font-body-lg text-body-lg text-on-surface-variant mb-8">
               Thank you, <span className="font-bold text-primary">{registeredName}</span>. Your account is
-              {currentUser?.verified ? ' verified and ready' : ' ready with verification pending'}. Welcome to FoodLoop!
+              {currentUser?.verified ? ' verified and ready' : ' ready with verification pending'}. Welcome to FoodBridge!
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -89,7 +89,7 @@ export const LandingPage: React.FC = () => {
       <section className="py-section-gap px-container-padding bg-surface">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="font-headline-lg text-headline-lg text-primary mb-4">How FoodLoop Works</h2>
+            <h2 className="font-headline-lg text-headline-lg text-primary mb-4">How FoodBridge Works</h2>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mx-auto">
               A seamless orchestration of technology and community action to ensure no edible food goes to waste.
             </p>

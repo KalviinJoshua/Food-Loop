@@ -94,7 +94,7 @@ export const AIAdvisorWidget: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-white font-serif tracking-wide leading-none">
-                  FoodLoop AI Advisor
+                  FoodBridge AI Advisor
                 </h3>
                 <span className="text-[10px] text-white/70 block mt-0.5 font-sans uppercase font-bold tracking-wider">
                   Powered by Gemini 2.5

@@ -1,8 +1,8 @@
-# 🍽️ FoodLoop — Intelligent Food Recovery Platform
+# 🍽️ FoodBridge — Intelligent Food Recovery Platform
 
 > **Recovering Food. Restoring Hope.**
 
-FoodLoop is an intelligent food recovery and waste management platform that connects **food donors, receivers, and waste processors** through smart matching and automated allocation.
+FoodBridge is an intelligent food recovery and waste management platform that connects **food donors, receivers, and waste processors** through smart matching and automated allocation.
 
 The platform helps restaurants, hotels, supermarkets, NGOs, shelters, orphanages, compost facilities, and biogas plants coordinate food recovery and organic waste diversion through one unified system.
 
@@ -10,15 +10,15 @@ The platform helps restaurants, hotels, supermarkets, NGOs, shelters, orphanages
 
 ## 🌐 Live Demo
 
-**Website:**https://foodloop-nu.vercel.app/
+**Website:**https://FoodBridge-nu.vercel.app/
 
 ---
 
-## 🎯 What is FoodLoop?
+## 🎯 What is FoodBridge?
 
 Every day, large quantities of edible food are wasted while organizations and communities struggle to access sufficient food.
 
-FoodLoop addresses this gap by creating a digital recovery network:
+FoodBridge addresses this gap by creating a digital recovery network:
 
 ```text
 Food Donor
@@ -105,7 +105,7 @@ Completed
 
 ## 🤖 AI-Powered Smart Matching
 
-FoodLoop uses a hybrid matching architecture.
+FoodBridge uses a hybrid matching architecture.
 
 ### Deterministic Matching
 
@@ -130,13 +130,13 @@ Google Gemini enhances the matching process by providing:
 * Partner recommendations
 * AI-assisted analysis
 
-If Gemini is unavailable, FoodLoop falls back to the deterministic matching engine.
+If Gemini is unavailable, FoodBridge falls back to the deterministic matching engine.
 
 ---
 
 # 🔀 Partial Allocation — Auto-Split
 
-FoodLoop can distribute a single donation across multiple receivers.
+FoodBridge can distribute a single donation across multiple receivers.
 
 For example:
 
@@ -148,7 +148,7 @@ Receiver B → needs 120
 Receiver C → needs 150
 ```
 
-FoodLoop automatically calculates:
+FoodBridge automatically calculates:
 
 ```text
 Receiver A → 80
@@ -216,7 +216,7 @@ Compost facilities, biogas plants, and other waste processors can:
 
 # 📄 FSSAI Document Verification
 
-FoodLoop includes functional FSSAI certificate processing for donor registration.
+FoodBridge includes functional FSSAI certificate processing for donor registration.
 
 The registration workflow can process uploaded certificates and attempt to extract relevant information such as:
 
@@ -276,7 +276,7 @@ Better Future Matching
 
 # 🗺️ Interactive Network Map
 
-FoodLoop includes an interactive network visualization representing the recovery ecosystem.
+FoodBridge includes an interactive network visualization representing the recovery ecosystem.
 
 It distinguishes:
 
@@ -297,9 +297,9 @@ The map supports:
 
 ---
 
-# 🤖 FoodLoop AI Advisor
+# 🤖 FoodBridge AI Advisor
 
-FoodLoop includes an AI-powered advisor using Google Gemini.
+FoodBridge includes an AI-powered advisor using Google Gemini.
 
 The advisor can help users understand:
 
@@ -317,7 +317,7 @@ The system includes fallback handling when the AI service is unavailable.
 
 # 🔐 Data & Authentication
 
-FoodLoop currently uses role-based application authentication with:
+FoodBridge currently uses role-based application authentication with:
 
 * Donor
 * Receiver
@@ -332,7 +332,7 @@ The architecture is designed so a cloud database and production authentication c
 # 🏗️ Architecture
 
 ```text
-                         FoodLoop
+                         FoodBridge
                             │
                 ┌───────────┴───────────┐
                 │                       │
@@ -390,7 +390,7 @@ The architecture is designed so a cloud database and production authentication c
 # 📂 Project Structure
 
 ```text
-FoodLoop/
+FoodBridge/
 │
 ├── src/
 │   ├── components/
@@ -460,7 +460,7 @@ Reliability Update
 
 # ♻️ Organic Waste Recovery
 
-FoodLoop also handles food that is no longer suitable for human consumption.
+FoodBridge also handles food that is no longer suitable for human consumption.
 
 ```text
 Organic Waste
@@ -509,7 +509,7 @@ Need: 150
 Reliability: 87%
 ```
 
-FoodLoop calculates a multi-factor score for each receiver and ranks them.
+FoodBridge calculates a multi-factor score for each receiver and ranks them.
 
 The Auto-Split engine then distributes:
 
@@ -584,7 +584,7 @@ The project should complete both checks without errors.
 
 # 🔮 Future Improvements
 
-FoodLoop can be extended with:
+FoodBridge can be extended with:
 
 * 🔔 Real-time notifications
 * 📱 Native mobile application
@@ -603,14 +603,14 @@ FoodLoop can be extended with:
 
 # 🌱 Impact Vision
 
-FoodLoop is designed around a simple principle:
+FoodBridge is designed around a simple principle:
 
 > **Food that can feed people should reach people. Food that cannot should still be recovered responsibly.**
 
 The platform connects the entire recovery chain:
 
 ```text
-                FOODLOOP
+                FoodBridge
                    │
        ┌───────────┼───────────┐
        │           │           │
@@ -643,7 +643,7 @@ https://github.com/KalviinJoshua/Food-Loop
 
 # ⭐ Support
 
-If you find FoodLoop useful or interesting, consider giving the repository a ⭐ on GitHub.
+If you find FoodBridge useful or interesting, consider giving the repository a ⭐ on GitHub.
 
 ---
 

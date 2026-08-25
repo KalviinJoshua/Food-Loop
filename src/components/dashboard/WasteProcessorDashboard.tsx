@@ -57,7 +57,7 @@ export const WasteProcessorDashboard: React.FC = () => {
             </div>
             <div>
               <span className="font-headline-md text-headline-md font-bold text-primary block leading-none">
-                FoodLoop
+                FoodBridge
               </span>
               <span className="text-[10px] uppercase tracking-wider text-amber-800 font-bold block mt-0.5">
                 Waste Processor

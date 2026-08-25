@@ -33,7 +33,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ onOpenLogin }) => {
             </div>
             <div>
               <span className="font-headline-md text-headline-md font-bold text-primary block leading-none">
-                FoodLoop
+                FoodBridge
               </span>
               <span className="text-[10px] uppercase font-bold tracking-widest text-secondary block mt-0.5">
                 Zero Waste Ecosystem

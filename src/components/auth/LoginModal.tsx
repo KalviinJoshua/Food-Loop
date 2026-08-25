@@ -54,7 +54,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <div className="w-12 h-12 rounded-xl bg-primary-fixed-dim/30 text-primary flex items-center justify-center mx-auto mb-3">
             <span className="material-symbols-outlined text-3xl">login</span>
           </div>
-          <h2 className="font-headline-lg text-headline-md text-primary">Login to FoodLoop</h2>
+          <h2 className="font-headline-lg text-headline-md text-primary">Login to FoodBridge</h2>
           <p className="font-body-md text-sm text-on-surface-variant mt-1">
             Access your Donor, Receiver, or Waste Processor dashboard
           </p>
