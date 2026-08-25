@@ -370,6 +370,37 @@ app.get("/api/status", (req, res) => {
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
+// Supabase database connection test
+app.get("/api/db-test", async (_req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from("users")
+            .select("id")
+            .limit(1);
+
+        if (error) {
+            console.error("Supabase database error:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "FoodLoop is connected to Supabase!",
+            rowsFound: data?.length ?? 0
+        });
+    } catch (error) {
+        console.error("Database connection error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Could not connect to Supabase"
+        });
+    }
+});
 var distPath = path.join(__dirname, "dist");
 app.use(express.static(distPath));
 app.get("*", (req, res) => {

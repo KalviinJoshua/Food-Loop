@@ -30,10 +30,13 @@ interface AppContextType {
   loginUserByRole: (role: UserRole) => void;
   loginByEmail: (email: string) => boolean;
   registerUser: (
-    newUserData: Omit<User, 'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'> & {
-      fssaiVerification?: FssaiVerificationResult;
-    }
-  ) => User;
+  newUserData: Omit<
+    User,
+    'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'
+  > & {
+    fssaiVerification?: FssaiVerificationResult;
+  }
+) => Promise<User>;
   createDonationPost: (
     postData: {
       type: 'food' | 'organic_waste';
@@ -245,53 +248,107 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  // Register User
-  const registerUser = (
-    newUserData: Omit<User, 'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'> & {
-      fssaiVerification?: FssaiVerificationResult;
-    }
-  ): User => {
-    const normalizedEmail = normalizeEmail(newUserData.email);
+// Register User
+const registerUser = async (
+  data: Omit<
+    User,
+    'id' | 'verified' | 'rating' | 'ratingCount' | 'reliability'
+  > & {
+    fssaiVerification?: FssaiVerificationResult;
+  }
+): Promise<User> => {
 
-    if (!newUserData.name.trim() || !newUserData.contactPerson.trim() || !normalizedEmail || !newUserData.address.trim()) {
-      throw new Error('Please fill in all required fields (Organization Name, Contact, Email, Address).');
-    }
-
-    if (!isValidEmail(normalizedEmail)) {
-      throw new Error('Please enter a valid email address.');
-    }
-
-    const duplicate = users.some((u) => normalizeEmail(u.email) === normalizedEmail);
-    if (duplicate) {
-      throw new Error('An account with this email already exists. Please login or use another email.');
-    }
-
-    const newUser: User = {
-      ...newUserData,
-      id: createUserId(),
-      name: newUserData.name.trim(),
-      email: normalizedEmail,
-      phone: newUserData.phone.trim(),
-      address: newUserData.address.trim(),
-      contactPerson: newUserData.contactPerson.trim(),
-      fssai: newUserData.fssai?.trim() || undefined,
-      gstin: newUserData.gstin?.trim() || undefined,
-      verified: newUserData.fssaiVerification?.verificationStatus === 'verified',
-      verificationStatus: newUserData.fssaiVerification?.verificationStatus || 'pending_review',
-      certificateUploaded: Boolean(newUserData.fssaiVerification),
-      extractedFssaiNumber: newUserData.fssaiVerification?.extractedData.fssaiNumber,
-      certificateExpiryDate: newUserData.fssaiVerification?.extractedData.expiryDate,
-      verificationTimestamp: newUserData.fssaiVerification?.verifiedAt,
-      fssaiVerification: newUserData.fssaiVerification,
-      rating: 5.0,
-      ratingCount: 1,
-      reliability: 100,
-    };
-    setUsers((prev) => [newUser, ...prev]);
-    setCurrentUser(newUser);
-    return newUser;
+  // Default values for a newly registered FoodLoop user
+  const newUserData = {
+    ...data,
+    verified: false,
+    rating: 5.0,
+    ratingCount: 1,
+    reliability: 100,
   };
 
+  // Convert FoodLoop User data into the format expected
+  // by the Express API.
+  const databaseUser = {
+  role: newUserData.role,
+
+  // Basic organization details
+  name: newUserData.name,
+  contactPerson: newUserData.contactPerson,
+  phone: newUserData.phone,
+  email: newUserData.email,
+  address: newUserData.address,
+
+  // Location
+  latitude: newUserData.location?.lat ?? null,
+  longitude: newUserData.location?.lng ?? null,
+
+  // Donor details
+  fssaiNumber: newUserData.fssai ?? null,
+  gstin: newUserData.gstin ?? null,
+
+  // Receiver details
+  dailyMealsRequired:
+    newUserData.mealsRequired ?? null,
+
+  dietaryNeeds:
+    newUserData.dietaryNeeds ?? null,
+
+  // Waste processor details
+  facilityType:
+    newUserData.facilityType ?? null,
+
+  // Verification
+  verified: false,
+
+  // Don't assume properties from FssaiVerificationResult
+  // until we inspect its actual structure.
+  verificationStatus: "pending_review",
+  certificateUploaded: false,
+
+  // Rating
+  rating: 5.0,
+  ratingCount: 1,
+  reliability: 100,
+};
+
+  // Send registration to our Express backend.
+  const response = await fetch('/api/users', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(databaseUser),
+  });
+
+  // Read backend response.
+  const result = await response.json();
+
+  // Handle database/API failure.
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.message || 'Failed to register user'
+    );
+  }
+
+  // Convert the database response back into FoodLoop's
+  // existing User format.
+  const savedUser: User = {
+    ...newUserData,
+    id: result.user.id,
+  };
+
+  // Add the database-created user to React state.
+  setUsers((previousUsers) => [
+    ...previousUsers,
+    savedUser,
+  ]);
+
+  // Make the newly registered user the active user.
+  setCurrentUser(savedUser);
+
+  return savedUser;
+};
   // Create Donation or Organic Waste post -> calculates matches immediately!
   const createDonationPost = (postData: {
     type: 'food' | 'organic_waste';

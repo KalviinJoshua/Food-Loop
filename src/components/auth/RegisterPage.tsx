@@ -118,23 +118,50 @@ export const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const fssaiVerification = selectedRole === 'donor' ? await verifyCertificate() : undefined;
-      registerUser({
-        name: orgName,
-        role: selectedRole,
-        email,
-        phone: phone || '+91',
-        address,
-        contactPerson,
-        fssai: selectedRole === 'donor' ? fssai : undefined,
-        gstin: selectedRole === 'donor' ? gstin : undefined,
-        location: { lat: 40.73, lng: -73.99, addressText: address || 'New York, NY' },
-        mealsRequired: selectedRole === 'receiver' ? mealsRequired : undefined,
-        facilityType: selectedRole === 'waste_processor' ? facilityType : undefined,
-        canCollect: selectedRole === 'receiver' ? 'Daily Pickup' : undefined,
-        capacityTons: selectedRole === 'waste_processor' ? 150 : undefined,
-        fssaiVerification,
-      });
+      const fssaiVerification =
+  selectedRole === 'donor'
+    ? await verifyCertificate()
+    : undefined;
+
+await registerUser({
+  name: orgName.trim(),
+  role: selectedRole,
+  email: email.trim(),
+  phone: phone || '+91',
+  address: address.trim(),
+  contactPerson: contactPerson.trim(),
+
+  fssai: selectedRole === 'donor' ? fssai.trim() : undefined,
+  gstin: selectedRole === 'donor' ? gstin.trim() : undefined,
+
+  location: {
+    lat: 40.73,
+    lng: -73.99,
+    addressText: address.trim(),
+  },
+
+  dailyMealsRequired:
+    selectedRole === 'receiver'
+      ? mealsRequired
+      : undefined,
+
+  facilityType:
+    selectedRole === 'waste_processor'
+      ? facilityType
+      : undefined,
+
+  canCollect:
+    selectedRole === 'receiver'
+      ? 'Daily Pickup'
+      : undefined,
+
+  capacityTons:
+    selectedRole === 'waste_processor'
+      ? 150
+      : undefined,
+
+  fssaiVerification,
+});
       setRegisteredName(orgName);
       setStep(3);
     } catch (error) {
