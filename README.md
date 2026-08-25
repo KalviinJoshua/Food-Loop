@@ -10,7 +10,7 @@ The platform helps restaurants, hotels, supermarkets, NGOs, shelters, orphanages
 
 ## 🌐 Live Demo
 
-**Website:**https://FoodBridge-nu.vercel.app/
+**Website:**https://foodloop-nu.vercel.app/
 
 ---
 
