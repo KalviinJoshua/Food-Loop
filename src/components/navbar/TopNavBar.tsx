@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UserRole } from '../../types';
+import { NotificationCenter } from '../notifications/NotificationCenter';
 
 interface TopNavBarProps {
   onOpenLogin: () => void;
 }
 
 export const TopNavBar: React.FC<TopNavBarProps> = ({ onOpenLogin }) => {
-  const { currentUser, activeView, setActiveView, loginUserByRole } = useApp();
+  const { currentUser, activeView, setActiveView, loginUserByRole, logout } = useApp();
   const [showDemoMenu, setShowDemoMenu] = useState(false);
 
   const handleNavClick = (view: 'landing' | 'register' | 'login' | 'dashboard' | 'map') => {
@@ -90,6 +91,16 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ onOpenLogin }) => {
                   </div>
                   <span className="text-xs text-on-surface-variant">Biogas / Compost</span>
                 </button>
+                <button
+                  onClick={() => handleQuickSwitch('admin')}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary-container/30 flex items-center justify-between text-sm transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                    <span className="font-medium">Admin (FoodBridge)</span>
+                  </div>
+                  <span className="text-xs text-on-surface-variant">Console</span>
+                </button>
               </div>
             )}
           </div>
@@ -131,18 +142,40 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ onOpenLogin }) => {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenLogin}
-            className="px-4 py-2 font-label-md text-label-md text-secondary hover:underline transition-all"
-          >
-            Login
-          </button>
-          <button
-            onClick={() => handleNavClick('register')}
-            className="px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all shadow-sm"
-          >
-            Register
-          </button>
+          {currentUser ? (
+            <>
+              <NotificationCenter />
+              <button
+                onClick={() => handleNavClick('dashboard')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 font-label-md text-label-md text-primary hover:text-secondary transition-all"
+                title="Go to my dashboard"
+              >
+                <span className="material-symbols-outlined text-lg">dashboard</span>
+              </button>
+              <button
+                onClick={() => logout()}
+                className="px-4 py-2 font-label-md text-label-md text-secondary border border-outline-variant rounded-lg hover:border-secondary hover:bg-surface-container-low transition-all flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">logout</span>
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onOpenLogin}
+                className="px-4 py-2 font-label-md text-label-md text-secondary hover:underline transition-all"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => handleNavClick('register')}
+                className="px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all shadow-sm"
+              >
+                Register
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>

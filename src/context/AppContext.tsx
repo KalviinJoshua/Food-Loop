@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   User,
   DonationPost,
@@ -8,15 +8,19 @@ import {
   DonationStatus,
   ChatMessage,
   FssaiVerificationResult,
+  AppNotification,
+  TrackingStatus,
+  TrackingEvent,
 } from '../types';
 import {
   ALL_MOCK_USERS,
   INITIAL_DONATION_POSTS,
   INITIAL_RECEIVER_REQUESTS,
   calculatePartialAllocation,
-  getTop3Matches,
 } from '../data/mockData';
 import { getDynamicTop3Matches } from '../data/matchingEngine';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { effectiveTrackingStatus, nextTrackingStatus } from '../utils/tracking';
 
 interface AppContextType {
   currentUser: User | null;
@@ -56,6 +60,7 @@ interface AppContextType {
   acceptDonationPartial: (postId: string) => void;
   markDonationCollected: (postId: string) => void;
   markDonationCompleted: (postId: string) => void;
+  markExpiredFoodProcessed: (postId: string) => void;
   createReceiverRequest: (
     reqData: {
       mealsRequired: number;
@@ -78,6 +83,25 @@ interface AppContextType {
   sendMessageToAdvisor: (content: string) => Promise<void>;
   clearAdvisorChat: () => void;
   runAiMatching: (post: DonationPost) => Promise<void>;
+  // In-app notifications (frontend-only; no DB table yet)
+  notifications: AppNotification[];
+  unreadNotificationCount: number;
+  addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  clearNotifications: () => void;
+  // Pickup / delivery logistics tracking (frontend state overlay)
+  advanceTracking: (postId: string, next: TrackingStatus) => void;
+  // Supabase authentication (progressive enhancement; falls back to local/demo)
+  authLoading: boolean;
+  isSupabaseAuthEnabled: boolean;
+  loginWithSupabase: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; message?: string }>;
+  logout: () => Promise<void>;
+  // Admin-only: flip a user's verification flag (frontend state; no DB write).
+  setUserVerification: (userId: string, verified: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -87,6 +111,7 @@ const STORAGE_KEY_POSTS = 'FoodBridge_posts_v1';
 const STORAGE_KEY_REQUESTS = 'FoodBridge_requests_v1';
 const STORAGE_KEY_RATINGS = 'FoodBridge_ratings_v1';
 const STORAGE_KEY_CURRENT_USER = 'FoodBridge_current_user_v1';
+const STORAGE_KEY_NOTIFICATIONS = 'FoodBridge_notifications_v1';
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -108,6 +133,29 @@ const readStoredArray = <T,>(key: string, fallback: T[]): T[] => {
   } catch {
     return fallback;
   }
+};
+
+// Recompute each receiver request's fulfilledMeals from the allocations across
+// ALL posts. Idempotent — safe to run after every allocation change so re-runs
+// never double-count. A request with any fulfilled meals is marked 'Matched';
+// 'Completed' requests are left as-is.
+const recomputeRequestFulfillment = (
+  allPosts: DonationPost[],
+  reqs: ReceiverRequest[]
+): ReceiverRequest[] => {
+  const fulfilledByReceiver: Record<string, number> = {};
+  for (const p of allPosts) {
+    for (const step of p.allocations || []) {
+      fulfilledByReceiver[step.receiverId] =
+        (fulfilledByReceiver[step.receiverId] || 0) + (step.allocated || 0);
+    }
+  }
+  return reqs.map((r) => {
+    const fulfilled = fulfilledByReceiver[r.receiverId] || 0;
+    const status: ReceiverRequest['status'] =
+      r.status === 'Completed' ? 'Completed' : fulfilled > 0 ? 'Matched' : 'Active';
+    return { ...r, fulfilledMeals: fulfilled, status };
+  });
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -186,6 +234,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeView, setActiveView] = useState<'landing' | 'register' | 'login' | 'dashboard' | 'map'>('landing');
 
+  // In-app notifications (frontend-only; persisted to localStorage, no DB table).
+  const [notifications, setNotifications] = useState<AppNotification[]>(() =>
+    readStoredArray(STORAGE_KEY_NOTIFICATIONS, [])
+  );
+
+  // Supabase auth (progressive enhancement). `authLoading` only matters when a
+  // browser Supabase client is configured; otherwise it resolves immediately and
+  // the app uses the existing local/demo login.
+  const [authLoading, setAuthLoading] = useState<boolean>(isSupabaseConfigured);
+
+  // Refs mirroring the latest state for use inside the 1s expiry sweep and the
+  // Supabase auth callbacks — both run outside the render cycle and would
+  // otherwise capture stale closures. `emittedRef` de-dupes the one-shot expiry
+  // notifications so each post warns at most once per threshold.
+  const usersRef = useRef(users);
+  const postsRef = useRef(posts);
+  const emittedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    usersRef.current = users;
+  }, [users]);
+  useEffect(() => {
+    postsRef.current = posts;
+  }, [posts]);
+
+  // Persist notifications to localStorage.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifications));
+    } catch {
+      // ignore
+    }
+  }, [notifications]);
+
   const [aiMatchingLoading, setAiMatchingLoading] = useState(false);
   const [advisorMessages, setAdvisorMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -213,22 +294,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [advisorMessages]);
 
-  // Save changes to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-      localStorage.setItem(STORAGE_KEY_POSTS, JSON.stringify(posts));
-      localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(requests));
-      localStorage.setItem(STORAGE_KEY_RATINGS, JSON.stringify(ratings));
-    } catch {
-      // ignore
-    }
-  }, [users, posts, requests, ratings]);
-
   // Login by Role (for 1-click Demo Switcher)
   const loginUserByRole = (role: UserRole) => {
     const demoUser = ALL_MOCK_USERS.find((u) => u.role === role);
-    const found = users.find((u) => u.id === demoUser?.id) || users.find((u) => u.role === role);
+    // Prefer the persisted copy; fall back to the demo mock when it isn't in
+    // persisted state yet (e.g. a stale localStorage snapshot that predates a
+    // newly-added demo role like admin). Additive: identical when present.
+    const found =
+      users.find((u) => u.id === demoUser?.id) ||
+      users.find((u) => u.role === role) ||
+      demoUser;
     if (found) {
       setCurrentUser(found);
       setActiveView('dashboard');
@@ -406,14 +481,50 @@ const registerUser = async (
       posts
     );
 
-    // Update the post with matches
+    // Auto-split the quantity across the ranked matches straight away so the
+    // donor immediately sees the allocation plan. The manual "Auto Allocate"
+    // button re-runs the same idempotent logic.
+    const allocSteps = calculatePartialAllocation(newPost.quantityMeals, topMatches);
+
+    // Update the post with matches + initial allocation
     const postWithMatches: DonationPost = {
       ...newPost,
       matches: topMatches,
+      allocations: allocSteps,
+      status: allocSteps.length > 0 ? 'Matched' : 'Posted',
+      assignedReceiverId: allocSteps[0]?.receiverId,
+      assignedReceiverName: allocSteps[0]?.receiverName,
     };
 
-    setPosts((prev) => [postWithMatches, ...prev]);
-    // Asynchronously call AI matching
+    const nextPosts = [postWithMatches, ...posts];
+    setPosts(nextPosts);
+    setRequests((prev) => recomputeRequestFulfillment(nextPosts, prev));
+
+    // Notify the donor of the fresh matches + any meals still unallocated.
+    if (postWithMatches.matches.length > 0) {
+      addNotification({
+        type: 'match',
+        title: 'New matches found',
+        message: `${postWithMatches.matches.length} receiver(s) matched for "${postWithMatches.title}".`,
+        userId: currentUser.id,
+        relatedPostId: postWithMatches.id,
+        actionView: 'dashboard',
+      });
+    }
+    const allocatedTotal = allocSteps.reduce((sum, a) => sum + (a.allocated || 0), 0);
+    const unallocated = postWithMatches.quantityMeals - allocatedTotal;
+    if (unallocated > 0) {
+      addNotification({
+        type: 'system',
+        title: 'Meals awaiting allocation',
+        message: `${unallocated} of ${postWithMatches.quantityMeals} meals from "${postWithMatches.title}" are not yet allocated.`,
+        userId: currentUser.id,
+        relatedPostId: postWithMatches.id,
+        actionView: 'dashboard',
+      });
+    }
+
+    // Asynchronously call AI matching (may refine matches/allocations)
     runAiMatching(postWithMatches);
     return postWithMatches;
   };
@@ -423,6 +534,11 @@ const registerUser = async (
     setPosts((prev) =>
       prev.map((p) => {
         if (p.id === postId) {
+          // An expired donation cannot be moved forward into the receiver
+          // lifecycle — its remaining quantity is routed to waste management.
+          if (p.status === 'Expired' && newStatus !== 'Expired') {
+            return p;
+          }
           return { ...p, status: newStatus };
         }
         return p;
@@ -430,46 +546,47 @@ const registerUser = async (
     );
   };
 
-  // Partial Allocation execution -> auto distribute meals among receivers
+  // Partial Allocation execution -> auto-split meals across the ranked matches.
+  // Reuses the existing greedy calculatePartialAllocation (min(remaining,
+  // needed) over the ranked matches). Idempotent: recomputes allocations from
+  // scratch and recomputes request fulfilment across all posts, so re-running
+  // never double-counts. Blocked once a donation has expired.
   const autoAllocatePost = (postId: string) => {
     if (!currentUser) throw new Error('Must be logged in');
     if (currentUser.role !== 'donor') throw new Error('Only donors can auto-allocate');
 
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id === postId) {
-          // Calculate allocation steps based on current matches
-          const allocSteps = calculatePartialAllocation(p.quantityMeals, p.matches);
-          
-          // Update receiver requests to reflect fulfilled meals
-          setRequests((prevRequests) => {
-            const updatedRequests = prevRequests.map((r) => {
-              // Find allocation for this receiver in the current allocation
-              const allocForReceiver = allocSteps.find((step) => step.receiverId === r.id);
-              if (allocForReceiver) {
-                return {
-                  ...r,
-                  fulfilledMeals: (r.fulfilledMeals || 0) + allocForReceiver.allocated,
-                  status: 'Matched',
-                };
-              }
-              return r;
-            });
-            return updatedRequests;
-          });
-          
-          // Update the post with allocations
-          return {
+    const target = posts.find((p) => p.id === postId);
+    if (!target) return;
+    if (target.status === 'Expired') throw new Error('Cannot allocate an expired donation');
+    if (!(target.quantityMeals > 0)) throw new Error('Donation quantity must be greater than zero');
+
+    // Reuse the post's ranked matches when present; otherwise compute them
+    // fresh with the existing weighted matcher (seed/imported posts ship with
+    // matches: []). We persist the computed matches back onto the post so a
+    // second click reuses the same stable ranking — keeping the greedy split
+    // deterministic and idempotent (no double-counting on re-run).
+    const rankedMatches =
+      target.matches && target.matches.length > 0
+        ? target.matches
+        : getDynamicTop3Matches(target, users, requests, posts);
+
+    const allocSteps = calculatePartialAllocation(target.quantityMeals, rankedMatches);
+
+    const nextPosts = posts.map((p) =>
+      p.id === postId
+        ? {
             ...p,
-            status: 'Matched',
+            status: (p.status === 'Posted' ? 'Matched' : p.status) as DonationStatus,
+            matches: rankedMatches,
             allocations: allocSteps,
             assignedReceiverId: allocSteps[0]?.receiverId,
             assignedReceiverName: allocSteps[0]?.receiverName,
-          };
-        }
-        return p;
-      })
+          }
+        : p
     );
+
+    setPosts(nextPosts);
+    setRequests((prev) => recomputeRequestFulfillment(nextPosts, prev));
   };
 
   // Accept Complete Donation - receiver accepts entire donation
@@ -506,6 +623,19 @@ const registerUser = async (
         return p;
       })
     );
+
+    // Notify the donor that a receiver accepted the whole donation.
+    const acceptedPost = posts.find((p) => p.id === postId);
+    if (acceptedPost) {
+      addNotification({
+        type: 'allocation',
+        title: 'Donation accepted',
+        message: `${currentUser.name} accepted the full donation "${acceptedPost.title}".`,
+        userId: acceptedPost.donorId,
+        relatedPostId: acceptedPost.id,
+        actionView: 'dashboard',
+      });
+    }
   };
 
   // Accept Partial Donation - receiver accepts their allocated portion
@@ -549,6 +679,22 @@ const registerUser = async (
         return p;
       })
     );
+
+    // Notify the donor that a receiver accepted their allocated portion.
+    const partialPost = posts.find((p) => p.id === postId);
+    if (partialPost) {
+      const alloc = partialPost.allocations.find((a) => a.receiverId === currentUser.id);
+      addNotification({
+        type: 'allocation',
+        title: 'Allocation accepted',
+        message: `${currentUser.name} accepted ${
+          alloc ? `${alloc.allocated} meals` : 'their allocation'
+        } from "${partialPost.title}".`,
+        userId: partialPost.donorId,
+        relatedPostId: partialPost.id,
+        actionView: 'dashboard',
+      });
+    }
   };
 
   // Mark Donation Collected - receiver marks food as collected
@@ -579,6 +725,19 @@ const registerUser = async (
         return p;
       })
     );
+
+    // Notify the donor that their food has been picked up.
+    const collectedPost = posts.find((p) => p.id === postId);
+    if (collectedPost) {
+      addNotification({
+        type: 'pickup',
+        title: 'Food picked up',
+        message: `${currentUser.name} has collected "${collectedPost.title}".`,
+        userId: collectedPost.donorId,
+        relatedPostId: collectedPost.id,
+        actionView: 'dashboard',
+      });
+    }
   };
 
   // Mark Donation Completed - final step in lifecycle
@@ -605,6 +764,29 @@ const registerUser = async (
         return p;
       })
     );
+
+    // Notify both parties that the donation was delivered/completed.
+    const completedPost = posts.find((p) => p.id === postId);
+    if (completedPost) {
+      addNotification({
+        type: 'delivery',
+        title: 'Donation delivered',
+        message: `"${completedPost.title}" has been delivered and completed.`,
+        userId: completedPost.donorId,
+        relatedPostId: completedPost.id,
+        actionView: 'dashboard',
+      });
+      if (completedPost.assignedReceiverId) {
+        addNotification({
+          type: 'delivery',
+          title: 'Donation delivered',
+          message: `"${completedPost.title}" has been delivered and completed.`,
+          userId: completedPost.assignedReceiverId,
+          relatedPostId: completedPost.id,
+          actionView: 'dashboard',
+        });
+      }
+    }
   };
 
   // Create Receiver Request
@@ -864,13 +1046,340 @@ const registerUser = async (
     localStorage.removeItem(STORAGE_KEY_RATINGS);
     localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
     localStorage.removeItem('FoodBridge_advisor_chat');
+    localStorage.removeItem(STORAGE_KEY_NOTIFICATIONS);
     setUsers(ALL_MOCK_USERS);
     setPosts(INITIAL_DONATION_POSTS);
     setRequests(INITIAL_RECEIVER_REQUESTS);
     setRatings([]);
+    setNotifications([]);
+    emittedRef.current.clear();
     clearAdvisorChat();
     setCurrentUser(ALL_MOCK_USERS[0]);
   };
+
+  // --- Auto-Expiry Sweep ---------------------------------------------------
+  // Once a food donation passes its safety window while still available
+  // (Posted/Matched), flip it to Expired, stamp expiredAt, and route the
+  // remaining (un-allocated) quantity to the waste-management workflow.
+  // History and any prior allocations are preserved. Runs every second and
+  // only writes state when something actually changed; cleans up on unmount.
+  useEffect(() => {
+    const WARN_MS = 30 * 60 * 1000; // 30 min -> warning
+    const CRITICAL_MS = 15 * 60 * 1000; // 15 min -> critical
+
+    const sweep = () => {
+      const now = Date.now();
+      setPosts((prev) => {
+        let changed = false;
+        const next = prev.map((p) => {
+          const eligible =
+            p.type === 'food' && (p.status === 'Posted' || p.status === 'Matched');
+          if (eligible && now > new Date(p.safeUntil).getTime()) {
+            changed = true;
+            return {
+              ...p,
+              status: 'Expired' as DonationStatus,
+              expiredAt: new Date(now).toISOString(),
+              recoveryPath: 'waste_processor' as const,
+            };
+          }
+          return p;
+        });
+        return changed ? next : prev;
+      });
+
+      // Emit one-shot expiry notifications off the SAME sweep (no extra timer).
+      // Reads the latest posts via postsRef; emittedRef ensures each post fires
+      // each threshold at most once. Reuses the existing countdown timestamps.
+      for (const p of postsRef.current) {
+        if (p.type !== 'food') continue;
+        if (p.status !== 'Posted' && p.status !== 'Matched') continue;
+        const remainingMs = new Date(p.safeUntil).getTime() - now;
+
+        if (remainingMs <= 0) {
+          const key = `${p.id}:expired`;
+          if (!emittedRef.current.has(key)) {
+            emittedRef.current.add(key);
+            const allocated = (p.allocations || []).reduce(
+              (sum, a) => sum + (a.allocated || 0),
+              0
+            );
+            const remainingMeals = Math.max(0, p.quantityMeals - allocated);
+            addNotification({
+              type: 'waste_management',
+              title: 'Donation expired',
+              message: `"${p.title}" expired — ${remainingMeals} remaining meals routed to waste management.`,
+              relatedPostId: p.id,
+              actionView: 'dashboard',
+            });
+          }
+        } else if (remainingMs <= CRITICAL_MS) {
+          const key = `${p.id}:critical`;
+          if (!emittedRef.current.has(key)) {
+            emittedRef.current.add(key);
+            addNotification({
+              type: 'expiry_warning',
+              title: 'Critical: food expiring soon',
+              message: `"${p.title}" is within 15 minutes of expiry. Confirm pickup now.`,
+              userId: p.donorId,
+              relatedPostId: p.id,
+              actionView: 'dashboard',
+            });
+          }
+        } else if (remainingMs <= WARN_MS) {
+          const key = `${p.id}:warning`;
+          if (!emittedRef.current.has(key)) {
+            emittedRef.current.add(key);
+            addNotification({
+              type: 'expiry_warning',
+              title: 'Food expiring within 30 minutes',
+              message: `"${p.title}" has under 30 minutes of safe time left.`,
+              userId: p.donorId,
+              relatedPostId: p.id,
+              actionView: 'dashboard',
+            });
+          }
+        }
+      }
+    };
+    sweep(); // evaluate immediately on mount
+    const intervalId = setInterval(sweep, 1000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Waste processor marks the expired-food remainder as processed
+  // (composting / biogas). Software status only — it does not assert that a
+  // physical transfer happened.
+  const markExpiredFoodProcessed = (postId: string) => {
+    if (!currentUser) throw new Error('Must be logged in');
+    if (currentUser.role !== 'waste_processor') {
+      throw new Error('Only waste processors can process waste');
+    }
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        // Only expired food routed to waste management can be processed.
+        if (p.status !== 'Expired' || p.recoveryPath !== 'waste_processor') {
+          return p;
+        }
+        return { ...p, recoveryPath: 'completed' as const };
+      })
+    );
+  };
+
+  // -------------------------------------------------------------------------
+
+  // --- In-app notifications ------------------------------------------------
+  const addNotification = (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => {
+    setNotifications((prev) => {
+      const notif: AppNotification = {
+        ...n,
+        id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      // Newest first; cap the log so it can never grow without bound.
+      return [notif, ...prev].slice(0, 50);
+    });
+  };
+
+  const markNotificationRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
+  // --- Admin: user verification -------------------------------------------
+  // Flips the existing `verified` flag (and keeps `verificationStatus` in sync)
+  // in shared frontend state. Reuses the existing users→localStorage persistence
+  // effect; no Supabase / DB write. Only the Admin dashboard calls this.
+  const setUserVerification = (userId: string, verified: boolean) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, verified, verificationStatus: verified ? 'verified' : 'pending_review' }
+          : u
+      )
+    );
+  };
+
+  // Notifications visible to the current user: broadcasts (no userId) + those
+  // targeted at them. The dropdown and the unread badge both use this view.
+  const visibleNotifications = notifications.filter(
+    (n) => n.userId === undefined || n.userId === currentUser?.id
+  );
+  const unreadNotificationCount = visibleNotifications.filter((n) => !n.read).length;
+
+  // --- Pickup / delivery tracking ------------------------------------------
+  // Advances the logistics overlay one step along the main timeline. Only the
+  // immediate next step is accepted (the UI derives it via nextTrackingStatus),
+  // so the demo cannot skip states. The donation status itself is untouched —
+  // effectiveTrackingStatus() merges this overlay with the donation lifecycle.
+  const advanceTracking = (postId: string, next: TrackingStatus) => {
+    const target = postsRef.current.find((p) => p.id === postId);
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        const current = effectiveTrackingStatus(p);
+        if (nextTrackingStatus(current) !== next) return p; // only the valid next step
+        const event: TrackingEvent = { status: next, timestamp: new Date().toISOString() };
+        const prevInfo = p.tracking;
+        return {
+          ...p,
+          tracking: {
+            status: next,
+            history: [...(prevInfo?.history || []), event],
+            pickupLocation: prevInfo?.pickupLocation ?? p.locationAddress,
+            deliveryLocation: prevInfo?.deliveryLocation ?? p.assignedReceiverName,
+            estimatedPickupTime: prevInfo?.estimatedPickupTime,
+            estimatedDeliveryTime: prevInfo?.estimatedDeliveryTime,
+          },
+        };
+      })
+    );
+
+    if (target) {
+      if (next === 'pickup_scheduled') {
+        addNotification({
+          type: 'pickup',
+          title: 'Pickup scheduled',
+          message: `Pickup scheduled for "${target.title}".`,
+          userId: target.donorId,
+          relatedPostId: target.id,
+          actionView: 'dashboard',
+        });
+      } else if (next === 'picked_up') {
+        addNotification({
+          type: 'pickup',
+          title: 'Picked up',
+          message: `"${target.title}" has been picked up and is on the way.`,
+          userId: target.donorId,
+          relatedPostId: target.id,
+          actionView: 'dashboard',
+        });
+      } else if (next === 'delivered') {
+        addNotification({
+          type: 'delivery',
+          title: 'Delivered',
+          message: `"${target.title}" has been delivered to the receiver.`,
+          userId: target.donorId,
+          relatedPostId: target.id,
+          actionView: 'dashboard',
+        });
+      }
+    }
+  };
+
+  // --- Supabase authentication (progressive enhancement) -------------------
+  // Resolve a Supabase session (identified by email) to an app User. Prefer an
+  // existing local profile (created via registration / seeded demo data); if
+  // none exists yet, synthesize a minimal one so the session still lands on a
+  // usable dashboard. Real profile/role data continues to come from the
+  // existing registration flow (POST /api/users).
+  const syncSupabaseUser = (email: string) => {
+    const normalized = normalizeEmail(email);
+    const existing = usersRef.current.find((u) => normalizeEmail(u.email) === normalized);
+    if (existing) {
+      setCurrentUser(existing);
+      setActiveView('dashboard');
+      return;
+    }
+    const displayName = email.split('@')[0] || 'FoodBridge User';
+    const synthesized: User = {
+      id: `user-supabase-${normalized}`,
+      name: displayName,
+      role: 'donor',
+      email: normalized,
+      phone: '+91',
+      address: '',
+      contactPerson: displayName,
+      verified: true,
+      verificationStatus: 'verified',
+      rating: 5,
+      ratingCount: 1,
+      reliability: 100,
+      location: { lat: 13.0827, lng: 80.2707, addressText: 'Chennai' },
+    };
+    setUsers((prev) => (prev.some((u) => u.id === synthesized.id) ? prev : [...prev, synthesized]));
+    setCurrentUser(synthesized);
+    setActiveView('dashboard');
+  };
+
+  const loginWithSupabase = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, message: 'Secure sign-in is not configured on this deployment.' };
+    }
+    setAuthLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizeEmail(email),
+        password,
+      });
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      const sessionEmail = (data.user?.email as string | undefined) || normalizeEmail(email);
+      syncSupabaseUser(sessionEmail);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Sign-in failed' };
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch {
+      // ignore sign-out errors — we still clear the local session below
+    }
+    setCurrentUser(null);
+    setActiveView('landing');
+  };
+
+  // On mount, restore any existing Supabase session and subscribe to auth
+  // changes. No-op (and instantly "not loading") when Supabase isn't configured.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setAuthLoading(false);
+      return;
+    }
+    let active = true;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        const sessionEmail = data.session?.user?.email;
+        if (sessionEmail) syncSupabaseUser(sessionEmail);
+        setAuthLoading(false);
+      })
+      .catch(() => {
+        if (active) setAuthLoading(false);
+      });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const sessionEmail = session?.user?.email;
+      if (sessionEmail) syncSupabaseUser(sessionEmail);
+    });
+
+    return () => {
+      active = false;
+      authListener?.subscription?.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AppContext.Provider
@@ -893,6 +1402,7 @@ const registerUser = async (
         acceptDonationPartial,
         markDonationCollected,
         markDonationCompleted,
+        markExpiredFoodProcessed,
         createReceiverRequest,
         submitRating,
         resetDemoData,
@@ -902,6 +1412,18 @@ const registerUser = async (
         sendMessageToAdvisor,
         clearAdvisorChat,
         runAiMatching,
+        notifications: visibleNotifications,
+        unreadNotificationCount,
+        addNotification,
+        markNotificationRead,
+        markAllNotificationsRead,
+        clearNotifications,
+        advanceTracking,
+        authLoading,
+        isSupabaseAuthEnabled: isSupabaseConfigured,
+        loginWithSupabase,
+        logout,
+        setUserVerification,
       }}
     >
       {children}

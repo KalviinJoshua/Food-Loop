@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DonationPost, DonationStatus, MatchResult } from '../../types';
 import { RatingModal } from '../ratings/RatingModal';
+import SafetyCountdown from '../common/SafetyCountdown';
+import { DonationTrackingTimeline } from '../tracking/DonationTrackingTimeline';
+import { getAllocationSummary } from '../../utils/foodSafety';
 
 export const DonorDashboard: React.FC = () => {
   const {
@@ -23,12 +26,22 @@ export const DonorDashboard: React.FC = () => {
   const [quantityMeals, setQuantityMeals] = useState<number>(300);
   const [prepTime, setPrepTime] = useState('18:30');
   const [allergens, setAllergens] = useState('Nuts, Dairy, Vegan-Friendly');
-  const [safeUntil, setSafeUntil] = useState('2026-08-02T22:30');
+  const [safeUntil, setSafeUntil] = useState(() => {
+    // Default the safety window to 2 hours out (local time) so newly posted
+    // food starts "Available"; the donor can shorten it to demo expiry.
+    const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
   const [deliveryRadiusMiles, setDeliveryRadiusMiles] = useState<number>(10);
   const [locationAddress, setLocationAddress] = useState(
     currentUser?.address || '142 Green St, Downtown, NY'
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Food-safety state + the live countdown now come from the shared
+  // SafetyCountdown component and getAllocationSummary (utils/foodSafety),
+  // so there is no per-component timer logic to keep in sync.
 
   // Active highlighted post for Smart Matching / Partial Allocation display
   const [selectedPostId, setSelectedPostId] = useState<string>('');
@@ -529,12 +542,48 @@ export const DonorDashboard: React.FC = () => {
                         </div>
                         <button
                           onClick={() => autoAllocatePost(selectedPost.id)}
-                          className="px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-md flex items-center gap-1.5"
+                          disabled={selectedPost.status === 'Expired'}
+                          className="px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-md flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <span className="material-symbols-outlined text-sm">splitscreen</span>
                           <span>Auto Allocate Meals</span>
                         </button>
                       </div>
+
+                      {/* FOOD SAFETY COUNTDOWN + QUANTITY SUMMARY */}
+                      {(() => {
+                        const summary = getAllocationSummary(selectedPost);
+                        const expired = selectedPost.status === 'Expired';
+                        return (
+                          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <SafetyCountdown safeUntil={selectedPost.safeUntil} />
+                            <div className="p-3 rounded-xl border border-outline-variant bg-surface-container-low flex items-center">
+                              <div className="grid grid-cols-3 gap-2 text-center w-full">
+                                <div>
+                                  <span className="block text-[10px] uppercase text-on-surface-variant font-bold">Available</span>
+                                  <span className="block font-bold text-primary text-lg">{summary.total}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] uppercase text-on-surface-variant font-bold">{expired ? 'Recovered' : 'Allocated'}</span>
+                                  <span className="block font-bold text-emerald-700 text-lg">{summary.allocated}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] uppercase text-on-surface-variant font-bold">{expired ? 'To Waste' : 'Remaining'}</span>
+                                  <span className={`block font-bold text-lg ${expired ? 'text-gray-500' : 'text-amber-700'}`}>{summary.remaining}</span>
+                                </div>
+                              </div>
+                            </div>
+                            {expired && summary.remaining > 0 && (
+                              <div className="md:col-span-2 p-3 rounded-xl border border-gray-300 bg-gray-50 text-xs text-gray-700 flex items-start gap-2">
+                                <span className="material-symbols-outlined text-base text-gray-500">recycling</span>
+                                <span>
+                                  Food recovery window expired — <strong>{summary.remaining} remaining meals</strong> routed to waste management (composting / biogas).
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* TOP 3 MATCHES CARDS */}
                       <div className="space-y-4">
@@ -640,6 +689,13 @@ export const DonorDashboard: React.FC = () => {
                                 </React.Fragment>
                               ))}
                             </div>
+                            <div className="mt-3 pt-3 border-t border-outline-variant text-xs font-bold text-primary flex items-center gap-2">
+                              <span className="material-symbols-outlined text-sm text-secondary">functions</span>
+                              <span>
+                                Total allocated: {getAllocationSummary(selectedPost).allocated} / {selectedPost.quantityMeals} meals
+                                {getAllocationSummary(selectedPost).remaining > 0 && ` • ${getAllocationSummary(selectedPost).remaining} remaining`}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -674,6 +730,8 @@ export const DonorDashboard: React.FC = () => {
                               className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                 post.status === 'Completed'
                                   ? 'bg-emerald-100 text-emerald-800'
+                                  : post.status === 'Expired'
+                                  ? 'bg-gray-200 text-gray-700'
                                   : post.status === 'Collected'
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-amber-100 text-amber-800'
@@ -725,6 +783,9 @@ export const DonorDashboard: React.FC = () => {
                             </button>
                           )}
                         </div>
+
+                        {/* Pickup / delivery tracking timeline (reuses the tracking overlay) */}
+                        <DonationTrackingTimeline post={post} showActions className="w-full" />
                       </div>
                     ))}
                   </div>
@@ -751,6 +812,8 @@ export const DonorDashboard: React.FC = () => {
                           className={`w-3 h-3 rounded-full ${
                             post.status === 'Completed'
                               ? 'bg-emerald-500'
+                              : post.status === 'Expired'
+                              ? 'bg-gray-400'
                               : post.status === 'Accepted'
                               ? 'bg-blue-500'
                               : 'bg-amber-500'
@@ -780,7 +843,8 @@ export const DonorDashboard: React.FC = () => {
                       </button>
                       <button
                         onClick={() => autoAllocatePost(post.id)}
-                        className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:opacity-90"
+                        disabled={post.status === 'Expired'}
+                        className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Auto Allocate
                       </button>

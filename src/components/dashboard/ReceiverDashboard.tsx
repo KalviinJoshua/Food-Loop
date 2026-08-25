@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DonationPost, DonationStatus } from '../../types';
 import { RatingModal } from '../ratings/RatingModal';
+import SafetyCountdown from '../common/SafetyCountdown';
+import { DonationTrackingTimeline } from '../tracking/DonationTrackingTimeline';
+import { getAllocationSummary } from '../../utils/foodSafety';
 
 export const ReceiverDashboard: React.FC = () => {
   const {
@@ -34,7 +37,7 @@ export const ReceiverDashboard: React.FC = () => {
   } | null>(null);
 
   const activeFoodPosts = posts.filter(
-    (p) => p.type === 'food' && p.status !== 'Completed'
+    (p) => p.type === 'food' && p.status !== 'Completed' && p.status !== 'Expired'
   );
   // Filter to show only current receiver's requests
   const myRequests = requests.filter((r) => r.receiverId === currentUser?.id);
@@ -339,16 +342,26 @@ export const ReceiverDashboard: React.FC = () => {
                         ))}
                       </div>
 
-                      <div className="text-xs text-on-surface-variant space-y-1 mb-4 py-2 border-y border-outline-variant/40">
+                      <div className="text-xs text-on-surface-variant space-y-1 mb-3 py-2 border-y border-outline-variant/40">
                         <p>
                           <strong>Total Quantity:</strong> {post.quantityMeals} Meals
                         </p>
+                        {(() => {
+                          const s = getAllocationSummary(post);
+                          return (
+                            <p>
+                              <strong>Available:</strong> {s.remaining} • <strong>Allocated:</strong> {s.allocated} of {s.total} Meals
+                            </p>
+                          );
+                        })()}
                         <p>
                           <strong>Pickup Location:</strong> {post.locationAddress}
                         </p>
-                        <p>
-                          <strong>Safe Until:</strong> {new Date(post.safeUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                      </div>
+
+                      {/* Live food-safety countdown (derived from safeUntil) */}
+                      <div className="mb-4">
+                        <SafetyCountdown safeUntil={post.safeUntil} compact />
                       </div>
 
                       {post.matches?.find((m) => m.receiverId === currentUser?.id) && (() => {
@@ -410,6 +423,14 @@ export const ReceiverDashboard: React.FC = () => {
                           </button>
                         </div>
                       </div>
+                    )}
+
+                    {/* Pickup / delivery tracking (read-only for receivers) */}
+                    {(post.status === 'Matched' ||
+                      post.status === 'Accepted' ||
+                      post.status === 'Collected' ||
+                      post.status === 'Completed') && (
+                      <DonationTrackingTimeline post={post} className="mt-4" />
                     )}
                   </div>
                 ))}

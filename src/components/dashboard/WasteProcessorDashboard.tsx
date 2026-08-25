@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DonationPost, DonationStatus } from '../../types';
 import { RatingModal } from '../ratings/RatingModal';
+import { getAllocationSummary } from '../../utils/foodSafety';
 
 export const WasteProcessorDashboard: React.FC = () => {
   const {
     currentUser,
     posts,
     updatePostStatus,
+    markExpiredFoodProcessed,
     setActiveView,
   } = useApp();
 
@@ -24,6 +26,16 @@ export const WasteProcessorDashboard: React.FC = () => {
 
   const organicWastePosts = posts.filter(
     (p) => p.type === 'organic_waste' && p.status !== 'Completed'
+  );
+
+  // Expired food routed to waste management: only the remaining (un-rescued)
+  // portion. Keep items that are already processed (recoveryPath 'completed')
+  // visible with a "Processed" badge instead of dropping them silently.
+  const expiredFoodPosts = posts.filter(
+    (p) =>
+      p.status === 'Expired' &&
+      (p.recoveryPath === 'waste_processor' || p.recoveryPath === 'completed') &&
+      getAllocationSummary(p).remaining > 0
   );
 
   const completedCollections = posts.filter(
@@ -261,6 +273,68 @@ export const WasteProcessorDashboard: React.FC = () => {
                   </p>
                 </div>
               </div>
+
+              {/* EXPIRED FOOD ROUTED TO WASTE MANAGEMENT */}
+              {expiredFoodPosts.length > 0 && (
+                <div className="mb-6 p-4 rounded-xl border border-gray-300 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-base text-gray-500">recycling</span>
+                    Expired Food — Recovery Window Closed ({expiredFoodPosts.length})
+                  </h3>
+                  <p className="text-[11px] text-gray-600 mb-4">
+                    These donations passed their food-safety window. The remaining un-rescued portion is
+                    routed here for composting / biogas processing. This is a software status only — it does
+                    not claim any physical transfer has occurred.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {expiredFoodPosts.map((post) => {
+                      const s = getAllocationSummary(post);
+                      const processed = post.recoveryPath === 'completed';
+                      return (
+                        <div
+                          key={post.id}
+                          className="p-4 rounded-xl border border-outline-variant bg-white flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start gap-2 mb-2">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-gray-500 block">
+                                  {post.donorName}
+                                </span>
+                                <h4 className="font-bold text-primary text-sm">{post.title}</h4>
+                              </div>
+                              <span className="px-2.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-bold text-[10px] uppercase">
+                                Expired
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-700 mb-1">
+                              ♻️ <strong>{s.remaining} remaining meals</strong> routed to waste management
+                              {s.allocated > 0 && ` (${s.allocated} already rescued before expiry)`}.
+                            </p>
+                            <p className="text-[10px] text-gray-500 mb-3">
+                              <strong>Location:</strong> {post.locationAddress}
+                            </p>
+                          </div>
+                          {processed ? (
+                            <span className="w-full py-2 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold text-center flex items-center justify-center gap-1">
+                              <span className="material-symbols-outlined text-sm">check_circle</span>
+                              Processed ({currentUser?.facilityType || 'Composting / Biogas'})
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => markExpiredFoodProcessed(post.id)}
+                              className="w-full py-2.5 rounded-lg bg-amber-800 text-white text-xs font-bold hover:opacity-90 transition-all shadow-sm flex items-center justify-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-sm">compost</span>
+                              <span>Mark Processed (Composting / Biogas)</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {organicWastePosts.map((post) => (

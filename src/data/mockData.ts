@@ -21,24 +21,29 @@ import {
 } from './matchingEngine';
 
 // ==========================================
-// 15 MOCK DONORS
+// 10 MOCK DONORS (Chennai)
 // ==========================================
+// All donors/receivers are seeded across central Chennai localities so every
+// receiver falls inside a typical donor delivery radius (~10 miles). The
+// matching engine is distance-driven, so keeping the demo compact preserves the
+// established headline behaviour (the 300-meal post auto-splitting 80/120/100
+// across the top-3 receivers).
 export const MOCK_DONORS: User[] = [
   {
     id: 'donor-1',
-    name: 'Green Bistro',
+    name: 'Chennai Central Restaurant',
     role: 'donor',
-    email: 'contact@greenbistro.com',
+    email: 'contact@chennaicentral.com',
     phone: '+91',
-    address: '142 Green St, Downtown, NY',
+    address: '12 Poonamallee High Rd, Park Town, Chennai',
     contactPerson: 'Marcus Vance',
     fssai: '11523004000188',
-    gstin: '07AABCU9603R1Z2',
+    gstin: '33AABCU9603R1Z2',
     verified: true,
     rating: 4.9,
     ratingCount: 42,
     reliability: 98,
-    location: { lat: 40.7128, lng: -74.006, addressText: 'Downtown, NY' },
+    location: { lat: 13.0827, lng: 80.2707, addressText: 'Park Town, Chennai' },
   },
   {
     id: 'donor-2',
@@ -46,15 +51,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'csr@grandplaza.com',
     phone: '+91',
-    address: '350 5th Ave, Midtown, NY',
+    address: '350 Anna Salai, Teynampet, Chennai',
     contactPerson: 'Elena Rostova',
     fssai: '11523004000189',
-    gstin: '07AABCU9603R1Z3',
+    gstin: '33AABCU9603R1Z3',
     verified: true,
     rating: 4.8,
     ratingCount: 65,
     reliability: 96,
-    location: { lat: 40.7484, lng: -73.9857, addressText: 'Midtown, NY' },
+    location: { lat: 13.045, lng: 80.25, addressText: 'Teynampet, Chennai' },
   },
   {
     id: 'donor-3',
@@ -62,15 +67,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'sustainability@metrofresh.com',
     phone: '+91',
-    address: '88 Lexington Ave, Gramercy, NY',
+    address: '88 Usman Rd, T. Nagar, Chennai',
     contactPerson: 'David Chen',
     fssai: '11523004000190',
-    gstin: '07AABCU9603R1Z4',
+    gstin: '33AABCU9603R1Z4',
     verified: true,
     rating: 4.7,
     ratingCount: 38,
     reliability: 94,
-    location: { lat: 40.7411, lng: -73.983, addressText: 'Gramercy, NY' },
+    location: { lat: 13.0418, lng: 80.2341, addressText: 'T. Nagar, Chennai' },
   },
   {
     id: 'donor-4',
@@ -78,15 +83,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'nutrition@sunshinenursing.com',
     phone: '+91',
-    address: '45 Sunset Blvd, Upper West Side, NY',
+    address: '45 2nd Avenue, Anna Nagar, Chennai',
     contactPerson: 'Sarah Johnson',
     fssai: '11523004000191',
-    gstin: '07AABCU9603R1Z5',
+    gstin: '33AABCU9603R1Z5',
     verified: true,
     rating: 4.8,
     ratingCount: 52,
     reliability: 95,
-    location: { lat: 40.7829, lng: -73.9654, addressText: 'Upper West Side, NY' },
+    location: { lat: 13.085, lng: 80.2101, addressText: 'Anna Nagar, Chennai' },
   },
   {
     id: 'donor-5',
@@ -94,15 +99,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'info@citycommunitykitchen.org',
     phone: '+91',
-    address: '200 1st Avenue, East Village, NY',
+    address: '200 Pantheon Rd, Egmore, Chennai',
     contactPerson: 'Mike Rivera',
     fssai: '11523004000192',
-    gstin: '07AABCU9603R1Z6',
+    gstin: '33AABCU9603R1Z6',
     verified: true,
     rating: 4.6,
     ratingCount: 29,
     reliability: 92,
-    location: { lat: 40.7282, lng: -73.9857, addressText: 'East Village, NY' },
+    location: { lat: 13.0732, lng: 80.2609, addressText: 'Egmore, Chennai' },
   },
   {
     id: 'donor-6',
@@ -110,15 +115,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'sales@ecofresh.com',
     phone: '+91',
-    address: '88 Willow Street, SoHo, NY',
+    address: '88 North Mada St, Mylapore, Chennai',
     contactPerson: 'Jenna Lee',
     fssai: '11523004000193',
-    gstin: '07AABCU9603R1Z7',
+    gstin: '33AABCU9603R1Z7',
     verified: true,
     rating: 4.9,
     ratingCount: 45,
     reliability: 97,
-    location: { lat: 40.7247, lng: -73.9959, addressText: 'SoHo, NY' },
+    location: { lat: 13.0339, lng: 80.2691, addressText: 'Mylapore, Chennai' },
   },
   {
     id: 'donor-7',
@@ -126,15 +131,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'order@riversidecafe.com',
     phone: '+91',
-    address: '120 Riverside Drive, Riverside South, NY',
+    address: '120 Lattice Bridge Rd, Adyar, Chennai',
     contactPerson: 'Tom Anderson',
     fssai: '11523004000194',
-    gstin: '07AABCU9603R1Z8',
+    gstin: '33AABCU9603R1Z8',
     verified: true,
     rating: 4.7,
     ratingCount: 34,
     reliability: 93,
-    location: { lat: 40.8325, lng: -74.0115, addressText: 'Riverside South, NY' },
+    location: { lat: 13.0012, lng: 80.2565, addressText: 'Adyar, Chennai' },
   },
   {
     id: 'donor-8',
@@ -142,15 +147,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'catering@greenleafhospital.com',
     phone: '+91',
-    address: '300 Park Avenue, Midtown East, NY',
+    address: '300 Sterling Rd, Nungambakkam, Chennai',
     contactPerson: 'Dr. Emily Chen',
     fssai: '11523004000195',
-    gstin: '07AABCU9603R1Z9',
+    gstin: '33AABCU9603R1Z9',
     verified: true,
     rating: 4.9,
     ratingCount: 58,
     reliability: 99,
-    location: { lat: 40.7602, lng: -73.9757, addressText: 'Midtown East, NY' },
+    location: { lat: 13.0604, lng: 80.2422, addressText: 'Nungambakkam, Chennai' },
   },
   {
     id: 'donor-9',
@@ -158,15 +163,15 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'events@sunsetrestaurantgroup.com',
     phone: '+91',
-    address: '500 Ocean Drive, Coney Island, NY',
+    address: '500 Beach Rd, Besant Nagar, Chennai',
     contactPerson: 'Carlos Martinez',
     fssai: '11523004000196',
-    gstin: '07AABCU9603R1Z0',
+    gstin: '33AABCU9603R1Z0',
     verified: true,
     rating: 4.8,
     ratingCount: 41,
     reliability: 94,
-    location: { lat: 40.5576, lng: -73.9932, addressText: 'Coney Island, NY' },
+    location: { lat: 12.9986, lng: 80.2669, addressText: 'Besant Nagar, Chennai' },
   },
   {
     id: 'donor-10',
@@ -174,29 +179,29 @@ export const MOCK_DONORS: User[] = [
     role: 'donor',
     email: 'donations@harvesthope.org',
     phone: '+91',
-    address: '800 Hope Street, Brownsville, NY',
+    address: '800 Poonamallee High Rd, Kilpauk, Chennai',
     contactPerson: 'James Wilson',
     fssai: '11523004000197',
-    gstin: '07AABCU9603R1Z1',
+    gstin: '33AABCU9603R1Z1',
     verified: true,
     rating: 4.5,
     ratingCount: 27,
     reliability: 88,
-    location: { lat: 40.6713, lng: -73.8999, addressText: 'Brownsville, NY' },
+    location: { lat: 13.0763, lng: 80.242, addressText: 'Kilpauk, Chennai' },
   },
 ];
 
 // ==========================================
-// 10 MOCK RECEIVERS
+// 10 MOCK RECEIVERS (Chennai)
 // ==========================================
 export const MOCK_RECEIVERS: User[] = [
   {
     id: 'receiver-1',
-    name: 'Hope Foundation',
+    name: "Chennai Children's NGO",
     role: 'receiver',
-    email: 'admin@hopefoundation.org',
+    email: 'admin@chennaichildren.org',
     phone: '+91',
-    address: '45 E 1st St, East Village, NY',
+    address: '45 Chamiers Rd, Nungambakkam, Chennai',
     contactPerson: 'Sarah Martinez',
     mealsRequired: 250,
     canCollect: 'Daily Pickup',
@@ -204,16 +209,16 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.9,
     ratingCount: 52,
     reliability: 96,
-    location: { lat: 40.7282, lng: -73.9857, addressText: 'East Village, NY' },
+    location: { lat: 13.0674, lng: 80.2376, addressText: 'Nungambakkam, Chennai' },
     verified: true,
   },
   {
     id: 'receiver-2',
-    name: 'City Meals on Wheels',
+    name: 'Food Relief Center',
     role: 'receiver',
-    email: 'contact@citymeals.org',
+    email: 'contact@foodrelief.org',
     phone: '+91',
-    address: '120 W 3rd St, Greenwich Village, NY',
+    address: '120 Peters Rd, Thousand Lights, Chennai',
     contactPerson: 'David Kim',
     mealsRequired: 180,
     canCollect: 'Responsive',
@@ -221,7 +226,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.7,
     ratingCount: 41,
     reliability: 94,
-    location: { lat: 40.7308, lng: -74.0005, addressText: 'Greenwich Village, NY' },
+    location: { lat: 13.0569, lng: 80.2425, addressText: 'Thousand Lights, Chennai' },
     verified: true,
   },
   {
@@ -230,7 +235,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'info@communitykitchen.org',
     phone: '+91',
-    address: '88 MacDougal St, SoHo, NY',
+    address: '88 Harrington Rd, Chetpet, Chennai',
     contactPerson: 'Maria Garcia',
     mealsRequired: 320,
     canCollect: 'Daily Pickup',
@@ -238,7 +243,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.8,
     ratingCount: 47,
     reliability: 95,
-    location: { lat: 40.7247, lng: -73.9959, addressText: 'SoHo, NY' },
+    location: { lat: 13.0709, lng: 80.2422, addressText: 'Chetpet, Chennai' },
     verified: true,
   },
   {
@@ -247,7 +252,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'support@greenspaces.org',
     phone: '+91',
-    address: '200 Avenger Place, Gramercy, NY',
+    address: '200 TTK Rd, Alwarpet, Chennai',
     contactPerson: 'Robert Chen',
     mealsRequired: 150,
     canCollect: 'Weekend Special',
@@ -255,7 +260,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.6,
     ratingCount: 33,
     reliability: 92,
-    location: { lat: 40.7411, lng: -73.983, addressText: 'Gramercy, NY' },
+    location: { lat: 13.0339, lng: 80.253, addressText: 'Alwarpet, Chennai' },
     verified: true,
   },
   {
@@ -264,7 +269,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'youthoutreach@school.org',
     phone: '+91',
-    address: '300 School Street, Lower East Side, NY',
+    address: '300 Royapettah High Rd, Royapettah, Chennai',
     contactPerson: 'Lisa Anderson',
     mealsRequired: 200,
     canCollect: 'Responsive',
@@ -272,7 +277,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.5,
     ratingCount: 29,
     reliability: 91,
-    location: { lat: 40.7194, lng: -73.9888, addressText: 'Lower East Side, NY' },
+    location: { lat: 13.0524, lng: 80.2639, addressText: 'Royapettah, Chennai' },
     verified: true,
   },
   {
@@ -281,7 +286,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'seniors@community.org',
     phone: '+91',
-    address: '500 Maple Avenue, Washington Heights, NY',
+    address: '500 Purasawalkam High Rd, Purasawalkam, Chennai',
     contactPerson: 'Thomas Wright',
     mealsRequired: 280,
     canCollect: 'Daily Pickup',
@@ -289,7 +294,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.8,
     ratingCount: 38,
     reliability: 94,
-    location: { lat: 40.8425, lng: -73.9436, addressText: 'Washington Heights, NY' },
+    location: { lat: 13.0878, lng: 80.2493, addressText: 'Purasawalkam, Chennai' },
     verified: true,
   },
   {
@@ -298,7 +303,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'help@familyrelief.org',
     phone: '+91',
-    address: '88 Hope Lane, Flatbush, NY',
+    address: '88 Mount Rd, Saidapet, Chennai',
     contactPerson: 'Michelle Torres',
     mealsRequired: 190,
     canCollect: 'Responsive',
@@ -306,7 +311,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.7,
     ratingCount: 35,
     reliability: 93,
-    location: { lat: 40.6436, lng: -73.9442, addressText: 'Flatbush, NY' },
+    location: { lat: 13.0213, lng: 80.2231, addressText: 'Saidapet, Chennai' },
     verified: true,
   },
   {
@@ -315,7 +320,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'ministry@weekendfood.org',
     phone: '+91',
-    address: '120 Church Street, Tribeca, NY',
+    address: '120 Triplicane High Rd, Triplicane, Chennai',
     contactPerson: 'Paul Evans',
     mealsRequired: 160,
     canCollect: 'Weekend Special',
@@ -323,7 +328,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.9,
     ratingCount: 44,
     reliability: 98,
-    location: { lat: 40.7214, lng: -74.0074, addressText: 'Tribeca, NY' },
+    location: { lat: 13.0569, lng: 80.276, addressText: 'Triplicane, Chennai' },
     verified: true,
   },
   {
@@ -332,7 +337,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'programs@school.org',
     phone: '+91',
-    address: '45 School Lane, Lower East Side, NY',
+    address: '45 Ellis Rd, Chintadripet, Chennai',
     contactPerson: 'Jessica Lee',
     mealsRequired: 220,
     canCollect: 'Daily Pickup',
@@ -340,7 +345,7 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.8,
     ratingCount: 39,
     reliability: 96,
-    location: { lat: 40.7194, lng: -73.9888, addressText: 'Lower East Side, NY' },
+    location: { lat: 13.07, lng: 80.268, addressText: 'Chintadripet, Chennai' },
     verified: true,
   },
   {
@@ -349,7 +354,7 @@ export const MOCK_RECEIVERS: User[] = [
     role: 'receiver',
     email: 'emergency@relief.org',
     phone: '+91',
-    address: '88 Crisis Avenue, Brownsville, NY',
+    address: '88 Sardar Patel Rd, Guindy, Chennai',
     contactPerson: 'Mark Stevens',
     mealsRequired: 140,
     canCollect: 'Responsive',
@@ -357,13 +362,13 @@ export const MOCK_RECEIVERS: User[] = [
     rating: 4.4,
     ratingCount: 22,
     reliability: 87,
-    location: { lat: 40.6713, lng: -73.8999, addressText: 'Brownsville, NY' },
+    location: { lat: 13.0067, lng: 80.2206, addressText: 'Guindy, Chennai' },
     verified: true,
   },
 ];
 
 // ==========================================
-// 5 MOCK WASTE PROCESSORS
+// 5 MOCK WASTE PROCESSORS (outer Chennai)
 // ==========================================
 export const MOCK_WASTE_PROCESSORS: User[] = [
   {
@@ -372,14 +377,14 @@ export const MOCK_WASTE_PROCESSORS: User[] = [
     role: 'waste_processor',
     email: 'info@ecocomp.com',
     phone: '+91',
-    address: '500 Industrial Way, Bronx, NY',
+    address: '500 Dumping Ground Rd, Kodungaiyur, Chennai',
     contactPerson: 'Mike Roberts',
     facilityType: 'Compost Facility',
     capacityTons: 50,
     rating: 4.8,
     ratingCount: 28,
     reliability: 93,
-    location: { lat: 40.8178, lng: -73.9214, addressText: 'Bronx, NY' },
+    location: { lat: 13.13, lng: 80.256, addressText: 'Kodungaiyur, Chennai' },
     verified: true,
   },
   {
@@ -388,14 +393,14 @@ export const MOCK_WASTE_PROCESSORS: User[] = [
     role: 'waste_processor',
     email: 'operations@greenbiogas.com',
     phone: '+91',
-    address: '200 Bioenergy Drive, Queens, NY',
+    address: '200 OMR, Perungudi, Chennai',
     contactPerson: 'Lisa Chen',
     facilityType: 'Biogas Plant',
     capacityTons: 75,
     rating: 4.9,
     ratingCount: 35,
     reliability: 97,
-    location: { lat: 40.7139, lng: -73.7989, addressText: 'Queens, NY' },
+    location: { lat: 12.9639, lng: 80.2426, addressText: 'Perungudi, Chennai' },
     verified: true,
   },
   {
@@ -404,14 +409,14 @@ export const MOCK_WASTE_PROCESSORS: User[] = [
     role: 'waste_processor',
     email: 'contact@urbandigester.com',
     phone: '+91',
-    address: '300 Waste Road, Brooklyn, NY',
+    address: '300 Industrial Estate, Manali, Chennai',
     contactPerson: 'James Smith',
     facilityType: 'Industrial Anaerobic Digester',
     capacityTons: 100,
     rating: 4.7,
     ratingCount: 31,
     reliability: 94,
-    location: { lat: 40.6402, lng: -73.9442, addressText: 'Brooklyn, NY' },
+    location: { lat: 13.1667, lng: 80.26, addressText: 'Manali, Chennai' },
     verified: true,
   },
   {
@@ -420,14 +425,14 @@ export const MOCK_WASTE_PROCESSORS: User[] = [
     role: 'waste_processor',
     email: 'info@cleanearthcompost.com',
     phone: '+91',
-    address: '150 Greenway, Staten Island, NY',
+    address: '150 Velachery Main Rd, Pallikaranai, Chennai',
     contactPerson: 'Sarah Brown',
     facilityType: 'Compost Facility',
     capacityTons: 40,
     rating: 4.6,
     ratingCount: 26,
     reliability: 92,
-    location: { lat: 40.5761, lng: -74.1386, addressText: 'Staten Island, NY' },
+    location: { lat: 12.937, lng: 80.21, addressText: 'Pallikaranai, Chennai' },
     verified: true,
   },
   {
@@ -436,19 +441,47 @@ export const MOCK_WASTE_PROCESSORS: User[] = [
     role: 'waste_processor',
     email: 'sales@renewenergy.com',
     phone: '+91',
-    address: '250 Eco Drive, Westchester, NY',
+    address: '250 OMR, Sholinganallur, Chennai',
     contactPerson: 'Daniel Lee',
     facilityType: 'Biogas Plant',
     capacityTons: 60,
     rating: 4.8,
     ratingCount: 30,
     reliability: 95,
-    location: { lat: 40.9589, lng: -73.7529, addressText: 'Westchester, NY' },
+    location: { lat: 12.901, lng: 80.2279, addressText: 'Sholinganallur, Chennai' },
     verified: true,
   },
 ];
 
-export const ALL_MOCK_USERS = [...MOCK_DONORS, ...MOCK_RECEIVERS, ...MOCK_WASTE_PROCESSORS];
+// ==========================================
+// MOCK ADMIN (platform operator)
+// ==========================================
+// A single seeded admin so the role-based Admin dashboard and the "Login as
+// Admin" demo shortcut have an account to resolve to. Excluded from the map and
+// from matching (matching only considers receivers / waste processors).
+export const MOCK_ADMINS: User[] = [
+  {
+    id: 'admin-1',
+    name: 'FoodBridge Admin',
+    role: 'admin',
+    email: 'admin@foodbridge.org',
+    phone: '+91',
+    address: 'FoodBridge HQ, Anna Salai, Chennai',
+    contactPerson: 'System Administrator',
+    verified: true,
+    rating: 5,
+    ratingCount: 0,
+    reliability: 100,
+    location: { lat: 13.0604, lng: 80.2496, addressText: 'Anna Salai, Chennai' },
+  },
+];
+
+export const ALL_MOCK_USERS = [
+  ...MOCK_DONORS,
+  ...MOCK_RECEIVERS,
+  ...MOCK_WASTE_PROCESSORS,
+  ...MOCK_ADMINS,
+];
 
 // ==========================================
 // SMART MATCHING ENGINE FORMULA
@@ -583,20 +616,29 @@ export function calculatePartialAllocation(
 // ==========================================
 // INITIAL MOCK DONATION POSTS
 // ==========================================
+
+// Food-safety windows for the demo food seeds are computed relative to load
+// time so the live countdown and the expiry -> waste-management routing always
+// demo correctly. The original fixed calendar dates were mostly in the past,
+// which would make every seeded post start Expired. Organic-waste seeds keep
+// their original static windows (their lifecycle is unrelated to food safety).
+const minutesFromNow = (mins: number): string =>
+  new Date(Date.now() + mins * 60 * 1000).toISOString();
+
 export const INITIAL_DONATION_POSTS: DonationPost[] = [
   {
     id: 'post-1',
     donorId: 'donor-1',
-    donorName: 'Green Bistro',
+    donorName: 'Chennai Central Restaurant',
     type: 'food',
     title: '300 Meals - Mixed Hot Buffet & Fresh Salads',
     description: 'Hot buffet trays of roasted chicken, herb rice, steamed vegetables, and seasonal salad bowls. Kept in sealed thermal cambro containers.',
     quantityMeals: 300,
     prepTime: '18:30',
     allergens: ['Nuts', 'Dairy', 'Vegan-Friendly'],
-    safeUntil: '2026-08-02T22:30:00',
+    safeUntil: minutesFromNow(90), // Available (headline 300-meal auto-split demo)
     deliveryRadiusMiles: 10,
-    locationAddress: '142 Green St, Downtown, NY',
+    locationAddress: '12 Poonamallee High Rd, Park Town, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T16:20:00',
     matches: [],
@@ -612,9 +654,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 500,
     prepTime: '19:00',
     allergens: ['Nuts', 'Dairy', 'Eggs', 'Gluten'],
-    safeUntil: '2026-08-25T20:30:00',
+    safeUntil: minutesFromNow(45), // Urgent (15-60m)
     deliveryRadiusMiles: 15,
-    locationAddress: '350 5th Ave, Midtown, NY',
+    locationAddress: '350 Anna Salai, Teynampet, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T14:10:00',
     matches: [],
@@ -630,9 +672,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 200,
     prepTime: '17:00',
     allergens: ['Soy', 'Wheat', 'Tree Nuts'],
-    safeUntil: '2026-08-24T23:30:00',
+    safeUntil: minutesFromNow(8), // Critical (<15m) — will tick into Expired live
     deliveryRadiusMiles: 8,
-    locationAddress: '88 Lexington Ave, Gramercy, NY',
+    locationAddress: '88 Usman Rd, T. Nagar, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T12:00:00',
     matches: [],
@@ -650,7 +692,7 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     allergens: [],
     safeUntil: '2026-08-30T18:00:00',
     deliveryRadiusMiles: 20,
-    locationAddress: '45 Sunset Blvd, Upper West Side, NY',
+    locationAddress: '45 2nd Avenue, Anna Nagar, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T10:30:00',
     matches: [],
@@ -668,7 +710,7 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     allergens: [],
     safeUntil: '2026-08-31T16:00:00',
     deliveryRadiusMiles: 25,
-    locationAddress: '200 1st Avenue, East Village, NY',
+    locationAddress: '200 Pantheon Rd, Egmore, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T11:15:00',
     matches: [],
@@ -684,9 +726,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 150,
     prepTime: '17:30',
     allergens: ['Fish', 'Shellfish', 'Soy'],
-    safeUntil: '2026-08-25T22:00:00',
+    safeUntil: minutesFromNow(-12), // Expired on load -> routed to waste management
     deliveryRadiusMiles: 12,
-    locationAddress: '88 Willow Street, SoHo, NY',
+    locationAddress: '88 North Mada St, Mylapore, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T13:45:00',
     matches: [],
@@ -702,9 +744,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 80,
     prepTime: '06:30',
     allergens: ['Dairy', 'Eggs', 'Wheat'],
-    safeUntil: '2026-08-25T16:45:00',
+    safeUntil: minutesFromNow(150), // Available
     deliveryRadiusMiles: 6,
-    locationAddress: '120 Riverside Drive, Riverside South, NY',
+    locationAddress: '120 Lattice Bridge Rd, Adyar, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T09:20:00',
     matches: [],
@@ -720,9 +762,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 400,
     prepTime: '18:00',
     allergens: ['Soy', 'Corn', 'Artificial Sweeteners'],
-    safeUntil: '2026-08-27T20:00:00',
+    safeUntil: minutesFromNow(40), // Urgent (15-60m)
     deliveryRadiusMiles: 18,
-    locationAddress: '300 Park Avenue, Midtown East, NY',
+    locationAddress: '300 Sterling Rd, Nungambakkam, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T15:00:00',
     matches: [],
@@ -738,9 +780,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 120,
     prepTime: '17:30',
     allergens: ['Shellfish', 'Peanuts', 'Tree Nuts'],
-    safeUntil: '2026-08-26T19:00:00',
+    safeUntil: minutesFromNow(6), // Critical (<15m)
     deliveryRadiusMiles: 22,
-    locationAddress: '500 Ocean Drive, Coney Island, NY',
+    locationAddress: '500 Beach Rd, Besant Nagar, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T16:00:00',
     matches: [],
@@ -756,9 +798,9 @@ export const INITIAL_DONATION_POSTS: DonationPost[] = [
     quantityMeals: 250,
     prepTime: '20:00',
     allergens: ['Peanuts', 'Soy'],
-    safeUntil: '2026-08-28T17:30:00',
+    safeUntil: minutesFromNow(120), // Available
     deliveryRadiusMiles: 30,
-    locationAddress: '800 Hope Street, Brownsville, NY',
+    locationAddress: '800 Poonamallee High Rd, Kilpauk, Chennai',
     status: 'Posted',
     createdAt: '2026-08-24T17:00:00',
     matches: [],
@@ -770,22 +812,22 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
   {
     id: 'req-1',
     receiverId: 'receiver-1',
-    receiverName: 'Hope Foundation',
-    mealsRequired: 250,
+    receiverName: "Chennai Children's NGO",
+    mealsRequired: 120,
     dietaryNotes: ['Vegan-Friendly', 'No Nuts'],
     urgency: 'High',
-    locationAddress: '45 E 1st St, East Village, NY',
+    locationAddress: '45 Chamiers Rd, Nungambakkam, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T14:00:00',
   },
   {
     id: 'req-2',
     receiverId: 'receiver-2',
-    receiverName: 'City Meals on Wheels',
-    mealsRequired: 180,
+    receiverName: 'Food Relief Center',
+    mealsRequired: 110,
     dietaryNotes: ['Vegetarian', 'Dairy-Free'],
     urgency: 'Normal',
-    locationAddress: '120 W 3rd St, Greenwich Village, NY',
+    locationAddress: '120 Peters Rd, Thousand Lights, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T15:00:00',
   },
@@ -793,10 +835,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-3',
     receiverId: 'receiver-3',
     receiverName: 'Community Kitchen Collective',
-    mealsRequired: 320,
+    mealsRequired: 110,
     dietaryNotes: ['All Types'],
     urgency: 'High',
-    locationAddress: '88 MacDougal St, SoHo, NY',
+    locationAddress: '88 Harrington Rd, Chetpet, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T16:00:00',
   },
@@ -804,10 +846,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-4',
     receiverId: 'receiver-4',
     receiverName: 'Green Spaces Food Pantry',
-    mealsRequired: 150,
+    mealsRequired: 120,
     dietaryNotes: ['Low Sodium', 'Gluten-Free'],
     urgency: 'Normal',
-    locationAddress: '200 Avenger Place, Gramercy, NY',
+    locationAddress: '200 TTK Rd, Alwarpet, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T17:00:00',
   },
@@ -815,10 +857,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-5',
     receiverId: 'receiver-5',
     receiverName: 'Youth Outreach Program',
-    mealsRequired: 200,
+    mealsRequired: 100,
     dietaryNotes: ['Halal', 'No Pork'],
     urgency: 'Immediate',
-    locationAddress: '300 School Street, Lower East Side, NY',
+    locationAddress: '300 Royapettah High Rd, Royapettah, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T18:00:00',
   },
@@ -826,10 +868,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-6',
     receiverId: 'receiver-6',
     receiverName: 'Senior Citizens Center',
-    mealsRequired: 280,
+    mealsRequired: 120,
     dietaryNotes: ['Soft Food', 'Low Sugar'],
     urgency: 'High',
-    locationAddress: '500 Maple Avenue, Washington Heights, NY',
+    locationAddress: '500 Purasawalkam High Rd, Purasawalkam, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T19:00:00',
   },
@@ -837,10 +879,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-7',
     receiverId: 'receiver-7',
     receiverName: 'Family Hunger Relief',
-    mealsRequired: 190,
+    mealsRequired: 100,
     dietaryNotes: ['Peanut-Free', 'Dairy-Free'],
     urgency: 'Normal',
-    locationAddress: '88 Hope Lane, Flatbush, NY',
+    locationAddress: '88 Mount Rd, Saidapet, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T20:00:00',
   },
@@ -848,10 +890,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-8',
     receiverId: 'receiver-8',
     receiverName: 'Weekend Food Ministry',
-    mealsRequired: 160,
+    mealsRequired: 110,
     dietaryNotes: ['Kosher'],
     urgency: 'Normal',
-    locationAddress: '120 Church Street, Tribeca, NY',
+    locationAddress: '120 Triplicane High Rd, Triplicane, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T21:00:00',
   },
@@ -859,10 +901,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-9',
     receiverId: 'receiver-9',
     receiverName: 'After School Programs',
-    mealsRequired: 220,
+    mealsRequired: 120,
     dietaryNotes: ['All Types'],
     urgency: 'High',
-    locationAddress: '45 School Lane, Lower East Side, NY',
+    locationAddress: '45 Ellis Rd, Chintadripet, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T22:00:00',
   },
@@ -870,10 +912,10 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
     id: 'req-10',
     receiverId: 'receiver-10',
     receiverName: 'Emergency Food Relief',
-    mealsRequired: 140,
+    mealsRequired: 110,
     dietaryNotes: ['Emergency'],
     urgency: 'Immediate',
-    locationAddress: '88 Crisis Avenue, Brownsville, NY',
+    locationAddress: '88 Sardar Patel Rd, Guindy, Chennai',
     status: 'Active',
     createdAt: '2026-08-24T23:00:00',
   },
@@ -882,8 +924,20 @@ export const INITIAL_RECEIVER_REQUESTS: ReceiverRequest[] = [
 // ==========================================
 // MAP MARKERS HELPER
 // ==========================================
-export function getMapMarkersData(posts: DonationPost[]): MapMarkerData[] {
+// Builds the marker set for the map. `origin` (defaults to the first donor —
+// Chennai Central) is the reference point for the straight-line distance shown
+// on each marker; distances are REAL Haversine miles, not hardcoded, so the map
+// and the info panel agree with the matching engine.
+export function getMapMarkersData(
+  posts: DonationPost[],
+  origin?: { lat: number; lng: number }
+): MapMarkerData[] {
   const markers: MapMarkerData[] = [];
+
+  const originLat = origin?.lat ?? MOCK_DONORS[0].location.lat;
+  const originLng = origin?.lng ?? MOCK_DONORS[0].location.lng;
+  const distanceFromOrigin = (lat: number, lng: number): number =>
+    parseFloat(calculateHaversineDistance(originLat, originLng, lat, lng).toFixed(2));
 
   // Add all Mock Donors (Green)
   MOCK_DONORS.forEach((d) => {
@@ -894,7 +948,7 @@ export function getMapMarkersData(posts: DonationPost[]): MapMarkerData[] {
       role: 'donor',
       lat: d.location.lat,
       lng: d.location.lng,
-      distanceMiles: 0.8,
+      distanceMiles: distanceFromOrigin(d.location.lat, d.location.lng),
       availableQuantity: activePost ? `${activePost.quantityMeals} Meals Available` : '300 Meals Daily',
       matchScore: 98,
       addressText: d.address,
@@ -911,7 +965,7 @@ export function getMapMarkersData(posts: DonationPost[]): MapMarkerData[] {
       role: 'receiver',
       lat: r.location.lat,
       lng: r.location.lng,
-      distanceMiles: 1.4,
+      distanceMiles: distanceFromOrigin(r.location.lat, r.location.lng),
       availableQuantity: `Needs ${r.mealsRequired || 100} Meals`,
       matchScore: 94,
       addressText: r.address,
@@ -928,7 +982,7 @@ export function getMapMarkersData(posts: DonationPost[]): MapMarkerData[] {
       role: 'waste_processor',
       lat: w.location.lat,
       lng: w.location.lng,
-      distanceMiles: 4.5,
+      distanceMiles: distanceFromOrigin(w.location.lat, w.location.lng),
       availableQuantity: `Capacity: ${w.capacityTons || 0} Tons`,
       matchScore: 92,
       addressText: w.address,

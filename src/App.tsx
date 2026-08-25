@@ -8,6 +8,7 @@ import { LoginModal } from './components/auth/LoginModal';
 import { DonorDashboard } from './components/dashboard/DonorDashboard';
 import { ReceiverDashboard } from './components/dashboard/ReceiverDashboard';
 import { WasteProcessorDashboard } from './components/dashboard/WasteProcessorDashboard';
+import { AdminDashboard } from './components/dashboard/AdminDashboard';
 import { MapView } from './components/map/MapView';
 import { AIAdvisorWidget } from './components/ai/AIAdvisorWidget';
 
@@ -24,6 +25,9 @@ function AppContent() {
     }
     if (currentUser.role === 'waste_processor') {
       return <WasteProcessorDashboard />;
+    }
+    if (currentUser.role === 'admin') {
+      return <AdminDashboard />;
     }
     return <DonorDashboard />;
   };

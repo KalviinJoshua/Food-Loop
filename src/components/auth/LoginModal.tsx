@@ -8,19 +8,48 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const { users, loginByEmail, loginUserByRole, setActiveView } = useApp();
+  const {
+    loginByEmail,
+    loginUserByRole,
+    setActiveView,
+    isSupabaseAuthEnabled,
+    loginWithSupabase,
+    authLoading,
+  } = useApp();
   const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleEmailLogin = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     if (!emailInput.trim()) {
       setErrorMsg('Please enter an email address.');
       return;
     }
+
+    // Progressive enhancement: when Supabase Auth is configured, the primary
+    // path is a real secure email+password sign-in. When it isn't configured
+    // (the default), fall back to the existing local email login untouched.
+    if (isSupabaseAuthEnabled) {
+      if (!passwordInput) {
+        setErrorMsg('Please enter your password to sign in securely.');
+        return;
+      }
+      setSubmitting(true);
+      const result = await loginWithSupabase(emailInput.trim(), passwordInput);
+      setSubmitting(false);
+      if (result.success) {
+        onClose();
+      } else {
+        setErrorMsg(result.message || 'Secure sign-in failed. Check your credentials or use a Quick Demo button.');
+      }
+      return;
+    }
+
     const success = loginByEmail(emailInput.trim());
     if (success) {
       onClose();
@@ -56,7 +85,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
           <h2 className="font-headline-lg text-headline-md text-primary">Login to FoodBridge</h2>
           <p className="font-body-md text-sm text-on-surface-variant mt-1">
-            Access your Donor, Receiver, or Waste Processor dashboard
+            Access your Donor, Receiver, Waste Processor, or Admin dashboard
           </p>
         </div>
 
@@ -131,30 +160,80 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 Login →
               </span>
             </button>
+
+            <button
+              onClick={() => handleDemoLogin('admin')}
+              className="w-full px-3 py-2.5 rounded-lg bg-white border border-outline-variant hover:border-secondary hover:bg-secondary-container/10 flex items-center justify-between text-left transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-sm">
+                  <span className="material-symbols-outlined text-base">shield_person</span>
+                </span>
+                <div>
+                  <p className="font-label-md text-sm text-primary font-bold">Admin Console</p>
+                  <p className="text-xs text-on-surface-variant">FoodBridge Admin (Monitoring &amp; Verification)</p>
+                </div>
+              </div>
+              <span className="text-xs text-secondary font-bold group-hover:translate-x-1 transition-transform">
+                Login →
+              </span>
+            </button>
           </div>
         </div>
 
         {/* Standard Email Form */}
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div className="space-y-1">
-            <label className="font-label-md text-xs text-on-surface-variant">
-              Or Login by Registered Email
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="font-label-md text-xs text-on-surface-variant">
+                {isSupabaseAuthEnabled ? 'Secure Sign-In (Email & Password)' : 'Or Login by Registered Email'}
+              </label>
+              {isSupabaseAuthEnabled && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                  <span className="material-symbols-outlined text-xs">lock</span>
+                  Supabase Auth
+                </span>
+              )}
+            </div>
             <input
               type="email"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="e.g. contact@greenbistro.com"
+              autoComplete="email"
               className="w-full rounded-lg border-outline-variant focus:border-secondary focus:ring-secondary text-sm p-3 bg-surface-bright"
             />
+            {isSupabaseAuthEnabled && (
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="Password"
+                autoComplete="current-password"
+                className="w-full rounded-lg border-outline-variant focus:border-secondary focus:ring-secondary text-sm p-3 bg-surface-bright mt-2"
+              />
+            )}
           </div>
 
           <button
             type="submit"
-            className="w-full bg-primary text-on-primary font-label-md text-sm py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md"
+            disabled={submitting || authLoading}
+            className="w-full bg-primary text-on-primary font-label-md text-sm py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Sign In with Email
+            {submitting && (
+              <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+            )}
+            {isSupabaseAuthEnabled
+              ? submitting
+                ? 'Signing in…'
+                : 'Sign In Securely'
+              : 'Sign In with Email'}
           </button>
+          {isSupabaseAuthEnabled && (
+            <p className="text-[11px] text-on-surface-variant text-center">
+              No Supabase account? Use a Quick Demo button above — they always work.
+            </p>
+          )}
         </form>
 
         <div className="mt-6 pt-4 border-t border-outline-variant text-center">

@@ -25,6 +25,11 @@ export const RegisterPage: React.FC = () => {
   const [registeredName, setRegisteredName] = useState('Green Leaf Bistro');
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Upload feedback for the certificate: 'uploading' drives a determinate
+  // progress bar (real bytes-sent %), 'verifying' covers the server-side OCR
+  // check that runs once the bytes have all arrived.
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<'idle' | 'uploading' | 'verifying'>('idle');
   const certificateInputRef = useRef<HTMLInputElement>(null);
 
   const handleSelectRole = (role: UserRole) => {
@@ -81,22 +86,58 @@ export const RegisterPage: React.FC = () => {
     formData.append('organizationName', orgName.trim());
     formData.append('fssaiNumber', fssai.trim());
 
-    const response = await fetch('/api/verify-fssai', {
-      method: 'POST',
-      body: formData,
+    setUploadProgress(0);
+    setUploadPhase('uploading');
+
+    // Use XMLHttpRequest (not fetch) so we can surface real upload progress via
+    // the upload.onprogress event. The request/response contract is identical
+    // to the previous fetch call: POST multipart to /api/verify-fssai and parse
+    // a FssaiVerificationResult (or an { error } payload) back.
+    return await new Promise<FssaiVerificationResult>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/verify-fssai');
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const pct = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(pct);
+          if (pct >= 100) setUploadPhase('verifying');
+        }
+      };
+
+      // Bytes are fully sent; the server is now running OCR / verification.
+      xhr.upload.onload = () => {
+        setUploadProgress(100);
+        setUploadPhase('verifying');
+      };
+
+      xhr.onload = () => {
+        let data: (FssaiVerificationResult & { error?: string }) | { error?: string } | null = null;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          data = null;
+        }
+
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(new Error(data && 'error' in data && data.error ? data.error : 'FSSAI verification failed.'));
+          return;
+        }
+
+        if (!data || !('verificationStatus' in data)) {
+          reject(new Error('FSSAI verification returned an invalid response.'));
+          return;
+        }
+
+        resolve(data as FssaiVerificationResult);
+      };
+
+      xhr.onerror = () =>
+        reject(new Error('Network error while uploading the certificate. Please check your connection and try again.'));
+      xhr.onabort = () => reject(new Error('Certificate upload was cancelled.'));
+
+      xhr.send(formData);
     });
-
-    const data = await response.json().catch(() => null) as FssaiVerificationResult | { error?: string } | null;
-
-    if (!response.ok) {
-      throw new Error(data && 'error' in data && data.error ? data.error : 'FSSAI verification failed.');
-    }
-
-    if (!data || !('verificationStatus' in data)) {
-      throw new Error('FSSAI verification returned an invalid response.');
-    }
-
-    return data;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,6 +209,8 @@ await registerUser({
       setErrorMsg(error instanceof Error ? error.message : 'Registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
+      setUploadPhase('idle');
+      setUploadProgress(0);
     }
   };
 
@@ -478,15 +521,31 @@ await registerUser({
                 </label>
                 <div
                   onClick={() => certificateInputRef.current?.click()}
-                  className="border-2 border-dashed border-outline-variant rounded-xl p-8 text-center bg-surface-bright hover:border-secondary transition-colors cursor-pointer group"
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer group ${
+                    certificateFile
+                      ? 'border-secondary bg-secondary-container/10'
+                      : 'border-outline-variant bg-surface-bright hover:border-secondary'
+                  }`}
                 >
-                  <span className="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-secondary mb-2">
-                    upload_file
-                  </span>
-                  <p className="font-body-md text-on-surface-variant">Click to upload or drag and drop</p>
-                  <p className="font-caption text-caption text-outline">
-                    Maximum file size 5MB • Instant automatic verification
-                  </p>
+                  {certificateFile ? (
+                    <>
+                      <span className="material-symbols-outlined text-4xl text-secondary mb-2">task_alt</span>
+                      <p className="font-body-md text-primary font-semibold break-all">{certificateFile.name}</p>
+                      <p className="font-caption text-caption text-outline">
+                        {(certificateFile.size / (1024 * 1024)).toFixed(2)} MB • Click to choose a different file
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-secondary mb-2">
+                        upload_file
+                      </span>
+                      <p className="font-body-md text-on-surface-variant">Click to upload or drag and drop</p>
+                      <p className="font-caption text-caption text-outline">
+                        Maximum file size 10MB • Instant automatic verification
+                      </p>
+                    </>
+                  )}
                   <input
                     ref={certificateInputRef}
                     type="file"
@@ -495,15 +554,50 @@ await registerUser({
                     onChange={handleCertificateChange}
                   />
                 </div>
+
+                {/* Live upload / verification progress bar */}
+                {uploadPhase !== 'idle' && (
+                  <div className="mt-3" role="status" aria-live="polite">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                        <span
+                          className={`material-symbols-outlined text-sm ${
+                            uploadPhase === 'verifying' ? 'animate-spin' : ''
+                          }`}
+                        >
+                          {uploadPhase === 'verifying' ? 'progress_activity' : 'cloud_upload'}
+                        </span>
+                        {uploadPhase === 'verifying' ? 'Verifying document…' : 'Uploading certificate…'}
+                      </span>
+                      <span className="text-xs font-bold text-secondary tabular-nums">
+                        {uploadPhase === 'verifying' ? '100%' : `${uploadProgress}%`}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
+                      <div
+                        className={`h-full rounded-full bg-secondary transition-all duration-150 ${
+                          uploadPhase === 'verifying' ? 'animate-pulse' : ''
+                        }`}
+                        style={{ width: `${uploadPhase === 'verifying' ? 100 : uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-6 flex justify-end">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-primary text-on-primary font-label-md text-label-md px-10 py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md"
+                  className="bg-primary text-on-primary font-label-md text-label-md px-10 py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Complete Registration' : 'Complete Registration'}
+                  {isSubmitting
+                    ? uploadPhase === 'uploading'
+                      ? `Uploading… ${uploadProgress}%`
+                      : uploadPhase === 'verifying'
+                      ? 'Verifying…'
+                      : 'Processing…'
+                    : 'Complete Registration'}
                 </button>
               </div>
             </form>

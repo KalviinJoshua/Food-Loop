@@ -1,8 +1,8 @@
-export type UserRole = 'donor' | 'receiver' | 'waste_processor';
+export type UserRole = 'donor' | 'receiver' | 'waste_processor' | 'admin';
 
 export type PostType = 'food' | 'organic_waste';
 
-export type DonationStatus = 'Posted' | 'Matched' | 'Accepted' | 'Collected' | 'Completed';
+export type DonationStatus = 'Posted' | 'Matched' | 'Accepted' | 'Collected' | 'Completed' | 'Expired';
 
 export type FssaiVerificationStatus = 'verified' | 'pending_review' | 'invalid' | 'expired' | 'document_unreadable';
 
@@ -98,6 +98,36 @@ export interface PartialAllocationStep {
   matchScore: number;
 }
 
+// --- Pickup / Delivery logistics tracking -----------------------------------
+// Status-based logistics timeline (no real GPS). In the demo the status is
+// advanced manually and stored in frontend state. Modeled as an optional
+// additive field on DonationPost so it maps 1:1 to a future Supabase `tracking`
+// table without changing the existing donation shape.
+export type TrackingStatus =
+  | 'donation_created'
+  | 'receiver_matched'
+  | 'pickup_scheduled'
+  | 'picked_up'
+  | 'delivered'
+  | 'cancelled'
+  | 'expired'
+  | 'waste_management';
+
+export interface TrackingEvent {
+  status: TrackingStatus;
+  timestamp: string; // ISO 8601
+  note?: string;
+}
+
+export interface TrackingInfo {
+  status: TrackingStatus;
+  history: TrackingEvent[];
+  pickupLocation?: string;
+  deliveryLocation?: string;
+  estimatedPickupTime?: string; // ISO — estimate only (no real routing)
+  estimatedDeliveryTime?: string; // ISO — estimate only (no real routing)
+}
+
 export interface DonationPost {
   id: string;
   donorId: string;
@@ -118,6 +148,11 @@ export interface DonationPost {
   assignedReceiverId?: string;
   assignedReceiverName?: string;
   ratingGiven?: boolean;
+  // Food safety & recovery tracking
+  recoveryPath?: 'donor' | 'waste_processor' | 'completed'; // tracking food recovery destination
+  expiredAt?: string; // timestamp when donation was declared expired
+  // Pickup/delivery logistics tracking (optional, additive — safe to persist later)
+  tracking?: TrackingInfo;
 }
 
 export interface ReceiverRequest {
@@ -166,4 +201,29 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt: string;
+}
+
+// --- In-app notifications ----------------------------------------------------
+// Reusable notification model kept entirely in frontend state (no DB table yet).
+// Serializable so it can be persisted to a future Supabase `notifications` table
+// 1:1. `userId` undefined = broadcast (visible to everyone / all roles).
+export type NotificationType =
+  | 'match'
+  | 'expiry_warning'
+  | 'allocation'
+  | 'pickup'
+  | 'delivery'
+  | 'waste_management'
+  | 'system';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  createdAt: string; // ISO 8601
+  read: boolean;
+  userId?: string; // target user id; undefined = broadcast to all
+  relatedPostId?: string;
+  actionView?: 'landing' | 'register' | 'login' | 'dashboard' | 'map';
 }
