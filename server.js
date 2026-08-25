@@ -1,3 +1,19 @@
+// server/supabase.ts
+import "dotenv/config";
+import { createClient } from "@supabase/supabase-js";
+var supabaseUrl = process.env.SUPABASE_URL;
+var supabaseSecretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL is missing from .env");
+}
+if (!supabaseSecretKey) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing from .env");
+}
+var supabase = createClient(
+  supabaseUrl,
+  supabaseSecretKey
+);
+
 // server.ts
 import express from "express";
 import path from "path";
@@ -370,36 +386,92 @@ app.get("/api/status", (req, res) => {
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-// Supabase database connection test
 app.get("/api/db-test", async (_req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from("users")
-            .select("id")
-            .limit(1);
-
-        if (error) {
-            console.error("Supabase database error:", error);
-
-            return res.status(500).json({
-                success: false,
-                message: error.message
-            });
-        }
-
-        return res.json({
-            success: true,
-            message: "FoodLoop is connected to Supabase!",
-            rowsFound: data?.length ?? 0
-        });
-    } catch (error) {
-        console.error("Database connection error:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Could not connect to Supabase"
-        });
+  try {
+    const { data, error } = await supabase.from("users").select("id").limit(1);
+    if (error) {
+      console.error("Supabase database error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
     }
+    return res.json({
+      success: true,
+      message: "FoodLoop is connected to Supabase!",
+      rowsFound: data?.length ?? 0
+    });
+  } catch (error) {
+    console.error("Database connection error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Could not connect to Supabase"
+    });
+  }
+});
+app.post("/api/users", async (req, res) => {
+  try {
+    const user = req.body;
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User data is required"
+      });
+    }
+    if (!user.role || !user.name || !user.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Role, organization name and email are required"
+      });
+    }
+    const { data, error } = await supabase.from("users").insert({
+      role: user.role,
+      // FoodLoop frontend field -> database field
+      organization_name: user.name,
+      contact_person: user.contactPerson ?? "",
+      phone: user.phone ?? "",
+      email: user.email,
+      address: user.address ?? "",
+      latitude: user.latitude ?? null,
+      longitude: user.longitude ?? null,
+      // Donor verification information
+      fssai_number: user.fssaiNumber ?? null,
+      gstin: user.gstin ?? null,
+      // Receiver information
+      daily_meals_required: user.dailyMealsRequired ?? null,
+      dietary_needs: user.dietaryNeeds ?? null,
+      // Waste processor information
+      facility_type: user.facilityType ?? null,
+      // Verification
+      verified: user.verified ?? false,
+      verification_status: user.verificationStatus ?? "pending_review",
+      certificate_uploaded: user.certificateUploaded ?? false,
+      extracted_fssai_number: user.extractedFssaiNumber ?? null,
+      certificate_expiry_date: user.certificateExpiryDate ?? null,
+      verification_timestamp: user.verificationTimestamp ?? null,
+      // Existing FoodLoop rating system
+      rating: user.rating ?? 5,
+      rating_count: user.ratingCount ?? 1,
+      reliability: user.reliability ?? 100
+    }).select().single();
+    if (error) {
+      console.error("Supabase user insert error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+    return res.status(201).json({
+      success: true,
+      user: data
+    });
+  } catch (error) {
+    console.error("Create user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create user"
+    });
+  }
 });
 var distPath = path.join(__dirname, "dist");
 app.use(express.static(distPath));
@@ -410,6 +482,12 @@ app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   }
 });
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+var server_default = app;
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+export {
+  server_default as default
+};
