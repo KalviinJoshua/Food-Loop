@@ -8,7 +8,7 @@
     "dev:backend": "tsx watch server.ts",
     "dev:all": "npx -y concurrently -n frontend,backend -c blue,green \"npm run dev\" \"npm run dev:backend\"",
     "build:server": "esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js",
-    "build": "vite build && npm run build:server",
+    "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
